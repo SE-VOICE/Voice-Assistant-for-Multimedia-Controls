@@ -1,0 +1,8 @@
+.DS_Store
+.pio/
+.venv/
+__pycache__/
+secrets.h
+.env
+.env.*
+!.env.example
