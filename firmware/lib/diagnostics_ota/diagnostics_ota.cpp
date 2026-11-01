@@ -1,6 +1,7 @@
 #include "diagnostics_ota.h"
 #include "command_map.h"
 #include <stdio.h>
+#include <algorithm>
 
 namespace vamc {
 
@@ -64,6 +65,67 @@ void CircularLogBuffer::dump(void (*print_fn)(const char* line)) const {
             print_fn(line_buf);
         }
     }
+}
+
+OtaResult OtaUpdater::apply(IOtaFirmwareSource& source,
+                            IOtaUpdateBackend& backend) const {
+    OtaImageInfo image_info = {0, 0};
+    if (!source.open(image_info)) {
+        source.close();
+        return OtaResult::SOURCE_UNAVAILABLE;
+    }
+
+    if (image_info.size_bytes == 0) {
+        source.close();
+        return OtaResult::INVALID_IMAGE_SIZE;
+    }
+
+    // Signature policy is explicit and happens before flash allocation/writes.
+    if (!backend.enable_signature_verification()) {
+        source.close();
+        return OtaResult::SIGNATURE_VERIFIER_UNAVAILABLE;
+    }
+
+    if (!backend.begin(image_info.size_bytes)) {
+        backend.abort();
+        source.close();
+        return OtaResult::UPDATE_BEGIN_FAILED;
+    }
+
+    uint8_t buffer[kOtaTransferBufferBytes];
+    uint32_t remaining = image_info.size_bytes;
+    while (remaining > 0) {
+        const size_t capacity = std::min(static_cast<size_t>(remaining),
+                                         sizeof(buffer));
+        const size_t bytes_read = source.read(buffer, capacity);
+        if (bytes_read == 0 || bytes_read > capacity || source.failed()) {
+            backend.abort();
+            source.close();
+            return OtaResult::SOURCE_READ_FAILED;
+        }
+
+        if (backend.write(buffer, bytes_read) != bytes_read) {
+            backend.abort();
+            source.close();
+            return OtaResult::UPDATE_WRITE_FAILED;
+        }
+        remaining -= static_cast<uint32_t>(bytes_read);
+    }
+
+    source.close();
+    switch (backend.finish_signed_update()) {
+        case OtaFinalizeResult::VERIFIED_AND_ACTIVATED:
+            backend.reboot();
+            return OtaResult::SUCCESS;
+        case OtaFinalizeResult::SIGNATURE_REJECTED:
+            backend.abort();
+            return OtaResult::SIGNATURE_REJECTED;
+        case OtaFinalizeResult::ACTIVATION_FAILED:
+            backend.abort();
+            return OtaResult::UPDATE_ACTIVATION_FAILED;
+    }
+    backend.abort();
+    return OtaResult::UPDATE_ACTIVATION_FAILED;
 }
 
 } // namespace vamc
