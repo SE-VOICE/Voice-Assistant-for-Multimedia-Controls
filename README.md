@@ -9,7 +9,7 @@ A hardware-based, voice-controlled multimedia remote built on **ESP32**. Say a w
 | PES2UG24CS154 | Dhanush S S | Project Manager & Integration Lead |
 | PES2UG24CS166 | G S Dheekshith | Audio Module Lead |
 | PES2UG24CS183 | Harsh Mannan | Recognition Module Lead |
-| PES2UG24CS137 | Chiranthan Shankar | Output & Maintenance Module Lead |
+| PES2UG24CS137 | Chiranthan Shankar ([@ChiruDevv](https://github.com/ChiruDevv)) | Output & Maintenance Module Lead |
 
 ---
 
