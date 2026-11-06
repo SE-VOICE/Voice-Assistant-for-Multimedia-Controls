@@ -1,0 +1,23 @@
+['/private/tmp/vamc-remaining-review-aMaXYu/venv/bin/python', '-m', 'coverage', 'run', '--branch', '--source=companion/laptop_prototype', '--omit=*/tests/*', '-m', 'unittest', 'discover', '-s', 'companion/laptop_prototype/tests', '-v']
+test_ambiguous_and_partial_inputs_rejected (test_prototype.PrototypeTests.test_ambiguous_and_partial_inputs_rejected) ... ok
+test_approved_variants_and_normalization (test_prototype.PrototypeTests.test_approved_variants_and_normalization) ... ok
+test_audio_file_cleanup_even_when_transcription_fails (test_prototype.PrototypeTests.test_audio_file_cleanup_even_when_transcription_fails) ... ok
+test_cli_defaults_to_dry_run (test_prototype.PrototypeTests.test_cli_defaults_to_dry_run) ... ok
+test_discrete_play_pause_resume (test_prototype.PrototypeTests.test_discrete_play_pause_resume) ... ok
+test_invalid_action_sends_nothing (test_prototype.PrototypeTests.test_invalid_action_sends_nothing) ... ok
+test_invalid_inputs_rejected (test_prototype.PrototypeTests.test_invalid_inputs_rejected) ... ok
+test_non_windows_execution_fails_explicitly (test_prototype.PrototypeTests.test_non_windows_execution_fails_explicitly) ... ok
+test_rejected_input_never_dispatches (test_prototype.PrototypeTests.test_rejected_input_never_dispatches) ... ok
+test_seven_commands (test_prototype.PrototypeTests.test_seven_commands) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.005s
+
+OK
+
+['/private/tmp/vamc-remaining-review-aMaXYu/venv/bin/python', '-m', 'coverage', 'json', '-o', '/Users/dhanushss/Documents/Codex/2026-10-24/set-this-up-here-and-learn-2/outputs/Dhanush_Review_Work/docs/test-reports/2026-11-07/evidence/python-coverage.json']
+Wrote JSON report to /Users/dhanushss/Documents/Codex/2026-10-24/set-this-up-here-and-learn-2/outputs/Dhanush_Review_Work/docs/test-reports/2026-11-07/evidence/python-coverage.json
+
+['/private/tmp/vamc-remaining-review-aMaXYu/venv/bin/python', '-m', 'coverage', 'html', '-d', '/Users/dhanushss/Documents/Codex/2026-10-24/set-this-up-here-and-learn-2/outputs/Dhanush_Review_Work/docs/test-reports/2026-11-07/evidence/python-html']
+Wrote HTML report to /Users/dhanushss/Documents/Codex/2026-10-24/set-this-up-here-and-learn-2/outputs/Dhanush_Review_Work/docs/test-reports/2026-11-07/evidence/python-html/index.html
+

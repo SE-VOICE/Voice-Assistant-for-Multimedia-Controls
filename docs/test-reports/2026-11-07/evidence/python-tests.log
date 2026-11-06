@@ -1,0 +1,15 @@
+test_ambiguous_and_partial_inputs_rejected (test_prototype.PrototypeTests.test_ambiguous_and_partial_inputs_rejected) ... ok
+test_approved_variants_and_normalization (test_prototype.PrototypeTests.test_approved_variants_and_normalization) ... ok
+test_audio_file_cleanup_even_when_transcription_fails (test_prototype.PrototypeTests.test_audio_file_cleanup_even_when_transcription_fails) ... ok
+test_cli_defaults_to_dry_run (test_prototype.PrototypeTests.test_cli_defaults_to_dry_run) ... ok
+test_discrete_play_pause_resume (test_prototype.PrototypeTests.test_discrete_play_pause_resume) ... ok
+test_invalid_action_sends_nothing (test_prototype.PrototypeTests.test_invalid_action_sends_nothing) ... ok
+test_invalid_inputs_rejected (test_prototype.PrototypeTests.test_invalid_inputs_rejected) ... ok
+test_non_windows_execution_fails_explicitly (test_prototype.PrototypeTests.test_non_windows_execution_fails_explicitly) ... ok
+test_rejected_input_never_dispatches (test_prototype.PrototypeTests.test_rejected_input_never_dispatches) ... ok
+test_seven_commands (test_prototype.PrototypeTests.test_seven_commands) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.005s
+
+OK

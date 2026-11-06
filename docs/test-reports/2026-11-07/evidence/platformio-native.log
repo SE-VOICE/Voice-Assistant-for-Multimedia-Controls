@@ -1,0 +1,208 @@
+Verbosity level can be increased via `-v, -vv, or -vvv` option
+Collected 15 tests
+
+Processing test_VAMC_F_011 in native environment
+--------------------------------------------------------------------------------
+Building...
+Library Manager: Installing throwtheswitch/Unity @ ^2.6.1
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Unity@2.6.1 has been installed!
+Testing...
+test/test_VAMC_F_011/test_main.cpp:166: test_TC_CONN_01_starts_guided_portal	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:167: test_TC_CONN_01_submits_credentials_and_saves_only_after_connection	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:168: test_TC_CONN_01_rejects_empty_network_name	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:169: test_TC_CONN_01_reports_connection_start_failure	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:170: test_TC_CONN_01_times_out_at_five_minutes	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:171: test_TC_CONN_01_reports_protected_save_failure	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:172: test_TC_CONN_01_copies_and_clears_pending_credentials	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:173: test_TC_CONN_01_terminal_timeout_prevents_late_save	[PASSED]
+test/test_VAMC_F_011/test_main.cpp:174: test_TC_CONN_01_rejects_oversized_credentials	[PASSED]
+-------------- native:test_VAMC_F_011 [PASSED] Took 1.47 seconds --------------
+
+Processing test_VAMC_F_010 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_010/test_main.cpp:135: test_TC_CMD_04_success_feedback_executes_within_1s	[PASSED]
+test/test_VAMC_F_010/test_main.cpp:136: test_listening_state_feedback	[PASSED]
+test/test_VAMC_F_010/test_main.cpp:137: test_recognized_state_feedback	[PASSED]
+test/test_VAMC_F_010/test_main.cpp:138: test_error_state_feedback	[PASSED]
+test/test_VAMC_F_010/test_main.cpp:139: test_low_battery_state_feedback	[PASSED]
+test/test_VAMC_F_010/test_main.cpp:140: test_controller_handles_null_drivers_safely	[PASSED]
+-------------- native:test_VAMC_F_010 [PASSED] Took 0.99 seconds --------------
+
+Processing test_VAMC_F_005 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_005/test_main.cpp:235: test_TC_ASR_02_exact_phrases_map_to_all_7_commands	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:236: test_TC_ASR_02_user_story_turn_it_up	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:237: test_TC_ASR_02_near_synonyms_for_every_command	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:238: test_case_punctuation_and_whitespace_are_ignored	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:239: test_near_match_corrects_misrecognised_words	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:240: test_near_match_does_not_guess	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:241: test_consistent_with_command_mapper_synonyms	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:242: test_unsupported_or_empty_transcripts_are_unrecognized	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:243: test_conflicting_commands_are_ambiguous	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:244: test_repeated_same_command_is_still_one_match	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:245: test_input_limits_reject_rather_than_truncate	[PASSED]
+test/test_VAMC_F_005/test_main.cpp:246: test_edit_distance	[PASSED]
+-------------- native:test_VAMC_F_005 [PASSED] Took 1.00 seconds --------------
+
+Processing test_reset_button in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_reset_button/test_main.cpp:52: test_TC_CONN_03_held_at_boot_requires_release	[PASSED]
+test/test_reset_button/test_main.cpp:53: test_TC_CONN_03_short_press_and_bounce_cannot_accumulate	[PASSED]
+test/test_reset_button/test_main.cpp:54: test_TC_CONN_03_one_reset_per_hold_rearms_after_release	[PASSED]
+test/test_reset_button/test_main.cpp:55: test_TC_CONN_03_clock_wrap_is_safe	[PASSED]
+test/test_reset_button/test_main.cpp:56: test_TC_CONN_03_zero_duration_disables_reset	[PASSED]
+test/test_reset_button/test_main.cpp:57: test_TC_CONN_03_approved_five_second_boundary	[PASSED]
+------------- native:test_reset_button [PASSED] Took 1.00 seconds -------------
+
+Processing test_VAMC_F_012 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_012/test_main.cpp:103: test_TC_CONN_02_advertises_for_host_discovery	[PASSED]
+test/test_VAMC_F_012/test_main.cpp:104: test_TC_CONN_02_pairs_after_discovery_using_displayed_passkey	[PASSED]
+test/test_VAMC_F_012/test_main.cpp:105: test_TC_CONN_02_cannot_pair_before_advertising	[PASSED]
+test/test_VAMC_F_012/test_main.cpp:106: test_TC_CONN_02_advertising_failure_blocks_pairing	[PASSED]
+test/test_VAMC_F_012/test_main.cpp:107: test_TC_CONN_02_just_works_result_is_rejected_and_stopped	[PASSED]
+-------------- native:test_VAMC_F_012 [PASSED] Took 0.97 seconds --------------
+
+Processing test_VAMC_F_014 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_014/test_main.cpp:124: test_TC_DIAG_01_last_N_events_stored_and_retrieved	[PASSED]
+test/test_VAMC_F_014/test_main.cpp:125: test_TC_DIAG_01_circular_overwrite_maintains_last_N_chronologically	[PASSED]
+test/test_VAMC_F_014/test_main.cpp:126: test_serial_dump_formatting	[PASSED]
+test/test_VAMC_F_014/test_main.cpp:127: test_security_log_structure_contains_no_sensitive_fields	[PASSED]
+test/test_VAMC_F_014/test_main.cpp:128: test_buffer_clear	[PASSED]
+-------------- native:test_VAMC_F_014 [PASSED] Took 0.98 seconds --------------
+
+Processing test_VAMC_F_013 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_013/test_main.cpp:75: test_TC_CONN_03_clears_both_stores_then_restarts_provisioning	[PASSED]
+test/test_VAMC_F_013/test_main.cpp:76: test_TC_CONN_03_clear_failure_still_attempts_both_and_blocks_restart	[PASSED]
+test/test_VAMC_F_013/test_main.cpp:77: test_TC_CONN_03_restart_failure_is_reported	[PASSED]
+-------------- native:test_VAMC_F_013 [PASSED] Took 1.11 seconds --------------
+
+Processing test_INT_01 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_INT_01/test_main.cpp:90: test_INT_01_all_seven_results_reach_matching_hid_usage	[PASSED]
+test/test_INT_01/test_main.cpp:91: test_INT_01_invalid_ambiguous_low_confidence_send_nothing	[PASSED]
+test/test_INT_01/test_main.cpp:92: test_INT_01_recognition_failure_send_nothing	[PASSED]
+test/test_INT_01/test_main.cpp:93: test_INT_01_disconnected_host_is_error_not_success	[PASSED]
+test/test_INT_01/test_main.cpp:94: test_INT_01_retry_success_is_success_feedback	[PASSED]
+test/test_INT_01/test_main.cpp:95: test_INT_01_exhausted_transport_is_error_feedback	[PASSED]
+---------------- native:test_INT_01 [PASSED] Took 1.02 seconds ----------------
+
+Processing test_DR_01_contracts in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_DR_01_contracts/test_main.cpp:59: test_DR_01_feedback_can_be_replaced_without_hardware	[PASSED]
+test/test_DR_01_contracts/test_main.cpp:60: test_DR_01_log_boundary_preserves_allowed_fields	[PASSED]
+test/test_DR_01_contracts/test_main.cpp:61: test_DR_01_ble_contract_compiles_without_platform_headers	[PASSED]
+------------ native:test_DR_01_contracts [PASSED] Took 1.07 seconds ------------
+
+Processing test_VAMC_SR_002 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_SR_002/test_main.cpp:105: test_TC_SEC_02_passkey_shown_before_authenticated_pairing	[PASSED]
+test/test_VAMC_SR_002/test_main.cpp:106: test_TC_SEC_02_just_works_and_failed_bond_are_rejected	[PASSED]
+test/test_VAMC_SR_002/test_main.cpp:107: test_TC_SEC_02_unavailable_page_blocks_pairing	[PASSED]
+test/test_VAMC_SR_002/test_main.cpp:108: test_TC_SEC_02_radio_failure_clears_display	[PASSED]
+test/test_VAMC_SR_002/test_main.cpp:109: test_TC_SEC_02_unexpected_events_and_invalid_passkey_do_not_pair	[PASSED]
+-------------- native:test_VAMC_SR_002 [PASSED] Took 1.02 seconds --------------
+
+Processing test_VAMC_SR_003 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_SR_003/test_main.cpp:82: test_TC_SEC_03_ciphertext_roundtrip_and_reboot_unlock	[PASSED]
+test/test_VAMC_SR_003/test_main.cpp:83: test_TC_SEC_03_wrong_passphrase_fails_closed	[PASSED]
+test/test_VAMC_SR_003/test_main.cpp:84: test_TC_SEC_03_tampered_tag_clears_outputs	[PASSED]
+test/test_VAMC_SR_003/test_main.cpp:85: test_TC_SEC_03_fresh_nonce_and_reset	[PASSED]
+test/test_VAMC_SR_003/test_main.cpp:86: test_TC_SEC_03_storage_errors_and_empty_passphrase	[PASSED]
+test/test_VAMC_SR_003/test_main.cpp:87: test_TC_SEC_03_corrupt_format_is_not_overwritten	[PASSED]
+-------------- native:test_VAMC_SR_003 [PASSED] Took 1.81 seconds --------------
+
+Processing test_VAMC_F_007 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_007/test_main.cpp:81: test_TC_CMD_01_all_7_commands_map_to_valid_hid_usages	[PASSED]
+test/test_VAMC_F_007/test_main.cpp:82: test_all_7_commands_are_supported	[PASSED]
+test/test_VAMC_F_007/test_main.cpp:83: test_invalid_command_id_rejected	[PASSED]
+test/test_VAMC_F_007/test_main.cpp:84: test_command_to_string	[PASSED]
+test/test_VAMC_F_007/test_main.cpp:85: test_from_string_parsing	[PASSED]
+-------------- native:test_VAMC_F_007 [PASSED] Took 1.21 seconds --------------
+
+Processing test_VAMC_F_009 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_009/test_main.cpp:100: test_TC_CMD_03_uses_three_configurable_exponential_retries	[PASSED]
+test/test_VAMC_F_009/test_main.cpp:101: test_TC_CMD_03_rechecks_and_recovers_a_temporarily_missing_link	[PASSED]
+test/test_VAMC_F_009/test_main.cpp:102: test_TC_CMD_03_reports_disconnected_after_three_retries	[PASSED]
+test/test_VAMC_F_009/test_main.cpp:103: test_TC_CMD_03_honors_a_smaller_retry_limit	[PASSED]
+-------------- native:test_VAMC_F_009 [PASSED] Took 0.98 seconds --------------
+
+Processing test_VAMC_F_008 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_008/test_main.cpp:125: test_TC_CMD_02_successful_transmission_within_2s	[PASSED]
+test/test_VAMC_F_008/test_main.cpp:126: test_TC_CMD_02_all_7_commands_transmit_correct_hid_usages	[PASSED]
+test/test_VAMC_F_008/test_main.cpp:127: test_TC_CMD_03_retry_recovers_after_transient_failure	[PASSED]
+test/test_VAMC_F_008/test_main.cpp:128: test_TC_CMD_03_all_retries_exhausted_reports_failure	[PASSED]
+test/test_VAMC_F_008/test_main.cpp:129: test_disconnected_host_fails_immediately	[PASSED]
+test/test_VAMC_F_008/test_main.cpp:130: test_latency_budget_exceeded_fails	[PASSED]
+-------------- native:test_VAMC_F_008 [PASSED] Took 1.02 seconds --------------
+
+Processing test_VAMC_F_006 in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_VAMC_F_006/test_main.cpp:165: test_TC_ASR_03_unrecognized_phrase_errors_and_sends_nothing	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:166: test_TC_ASR_03_ambiguous_phrase_errors_and_sends_nothing	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:167: test_null_transcript_is_rejected	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:168: test_matched_command_is_sent_without_error_feedback	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:169: test_all_7_commands_pass_the_gate	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:170: test_low_confidence_is_rejected	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:171: test_threshold_is_configurable	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:172: test_missing_confidence_is_not_checked	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:173: test_invalid_confidence_values_are_rejected	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:174: test_match_outcome_is_checked_before_confidence	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:175: test_asr_failure_errors_and_sends_nothing	[PASSED]
+test/test_VAMC_F_006/test_main.cpp:176: test_error_uses_real_feedback_controller_pattern	[PASSED]
+-------------- native:test_VAMC_F_006 [PASSED] Took 0.96 seconds --------------
+
+=================================== SUMMARY ===================================
+Environment    Test                  Status    Duration
+-------------  --------------------  --------  ------------
+native         test_VAMC_F_011       PASSED    00:00:01.474
+native         test_VAMC_F_010       PASSED    00:00:00.989
+native         test_VAMC_F_005       PASSED    00:00:01.003
+native         test_reset_button     PASSED    00:00:00.999
+native         test_VAMC_F_012       PASSED    00:00:00.973
+native         test_VAMC_F_014       PASSED    00:00:00.984
+native         test_VAMC_F_013       PASSED    00:00:01.109
+native         test_INT_01           PASSED    00:00:01.025
+native         test_DR_01_contracts  PASSED    00:00:01.070
+native         test_VAMC_SR_002      PASSED    00:00:01.016
+native         test_VAMC_SR_003      PASSED    00:00:01.811
+native         test_VAMC_F_007       PASSED    00:00:01.209
+native         test_VAMC_F_009       PASSED    00:00:00.984
+native         test_VAMC_F_008       PASSED    00:00:01.018
+native         test_VAMC_F_006       PASSED    00:00:00.958
+================= 93 test cases: 93 succeeded in 00:00:16.620 =================

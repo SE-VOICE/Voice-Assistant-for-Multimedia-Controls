@@ -1,0 +1,56 @@
+{
+  "compiled_cpp": [
+    "firmware/lib/asr_client/command_gate.cpp",
+    "firmware/lib/asr_client/command_matcher.cpp",
+    "firmware/lib/ble_hid/ble_hid.cpp",
+    "firmware/lib/command_map/command_map.cpp",
+    "firmware/lib/connectivity/authenticated_pairing.cpp",
+    "firmware/lib/connectivity/ble_discovery.cpp",
+    "firmware/lib/connectivity/credential_vault.cpp",
+    "firmware/lib/connectivity/factory_reset.cpp",
+    "firmware/lib/connectivity/wifi_provisioning.cpp",
+    "firmware/lib/diagnostics_ota/diagnostics_ota.cpp",
+    "firmware/lib/feedback/feedback.cpp",
+    "firmware/lib/pipeline/command_dispatch.cpp"
+  ],
+  "mapped_files": [
+    "firmware/lib/asr_client/command_gate.cpp",
+    "firmware/lib/asr_client/command_matcher.cpp",
+    "firmware/lib/ble_hid/ble_hid.cpp",
+    "firmware/lib/command_map/command_map.cpp",
+    "firmware/lib/connectivity/authenticated_pairing.cpp",
+    "firmware/lib/connectivity/ble_discovery.cpp",
+    "firmware/lib/connectivity/credential_vault.cpp",
+    "firmware/lib/connectivity/factory_reset.cpp",
+    "firmware/lib/connectivity/wifi_provisioning.cpp",
+    "firmware/lib/diagnostics_ota/diagnostics_ota.cpp",
+    "firmware/lib/feedback/feedback.cpp",
+    "firmware/lib/pipeline/command_dispatch.cpp"
+  ],
+  "headers_excluded_from_percentage": [
+    "firmware/lib/asr_client/asr_client.h",
+    "firmware/lib/asr_client/command_gate.h",
+    "firmware/lib/asr_client/command_matcher.h",
+    "firmware/lib/ble_hid/ble_hid.h",
+    "firmware/lib/command_map/command_map.h",
+    "firmware/lib/connectivity/authenticated_pairing.h",
+    "firmware/lib/connectivity/ble_discovery.h",
+    "firmware/lib/connectivity/connectivity.h",
+    "firmware/lib/connectivity/credential_vault.h",
+    "firmware/lib/connectivity/factory_reset.h",
+    "firmware/lib/connectivity/reset_button.h",
+    "firmware/lib/connectivity/wifi_provisioning.h",
+    "firmware/lib/diagnostics_ota/diagnostics_ota.h",
+    "firmware/lib/feedback/feedback.h",
+    "firmware/lib/pipeline/command_dispatch.h",
+    "firmware/lib/wake_word/wake_word.h"
+  ],
+  "excluded": [
+    "firmware/src (ESP32-only adapters and entry point)",
+    "firmware/examples",
+    "firmware/test",
+    "Unity",
+    "OpenSSL/framework/toolchain internals",
+    "unimplemented wake-word/offline-model functionality"
+  ]
+}

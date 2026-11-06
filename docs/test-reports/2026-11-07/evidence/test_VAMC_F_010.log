@@ -1,0 +1,10 @@
+./firmware/test/test_VAMC_F_010/test_main.cpp:135:test_TC_CMD_04_success_feedback_executes_within_1s:PASS
+./firmware/test/test_VAMC_F_010/test_main.cpp:136:test_listening_state_feedback:PASS
+./firmware/test/test_VAMC_F_010/test_main.cpp:137:test_recognized_state_feedback:PASS
+./firmware/test/test_VAMC_F_010/test_main.cpp:138:test_error_state_feedback:PASS
+./firmware/test/test_VAMC_F_010/test_main.cpp:139:test_low_battery_state_feedback:PASS
+./firmware/test/test_VAMC_F_010/test_main.cpp:140:test_controller_handles_null_drivers_safely:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK

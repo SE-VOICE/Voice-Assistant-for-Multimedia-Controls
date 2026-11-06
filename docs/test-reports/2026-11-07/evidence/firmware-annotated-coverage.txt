@@ -1,0 +1,1809 @@
+./firmware/lib/asr_client/command_gate.cpp:
+    1|       |#include "command_gate.h"
+    2|       |
+    3|       |namespace vamc {
+    4|       |
+    5|     24|GateResult CommandGate::reject(GateDecision reason) {
+    6|     24|    feedback_.show(FeedbackState::ERROR);
+    7|     24|    GateResult r;
+    8|     24|    r.decision = reason;
+    9|     24|    r.request.command = CommandId::PAUSE;  // placeholder, never sent
+   10|     24|    r.request.timestamp = 0;
+   11|     24|    return r;
+   12|     24|}
+   13|       |
+   14|     44|GateResult CommandGate::evaluate(const MatchResult& match, float confidence, uint32_t now_ms) {
+   15|     44|    switch (match.outcome) {
+   16|     28|        case MatchOutcome::MATCHED:
+  ------------------
+  |  Branch (16:9): [True: 28, False: 16]
+  ------------------
+   17|     28|            break;
+   18|      5|        case MatchOutcome::AMBIGUOUS:
+  ------------------
+  |  Branch (18:9): [True: 5, False: 39]
+  ------------------
+   19|      5|            return reject(GateDecision::REJECT_AMBIGUOUS);
+   20|     11|        case MatchOutcome::UNRECOGNIZED:
+  ------------------
+  |  Branch (20:9): [True: 11, False: 33]
+  ------------------
+   21|     11|        default:
+  ------------------
+  |  Branch (21:9): [True: 0, False: 44]
+  ------------------
+   22|     11|            return reject(GateDecision::REJECT_UNRECOGNIZED);
+   23|     44|    }
+   24|       |
+   25|       |    // A missing confidence (negative) is not checked. Anything else outside
+   26|       |    // [min, 1] — including NaN, which fails every comparison — is rejected.
+   27|     28|    if (confidence != gate_limits::kNoConfidence &&
+  ------------------
+  |  Branch (27:9): [True: 27, False: 1]
+  ------------------
+   28|     28|        !(confidence >= min_confidence_ && confidence <= 1.0f)) {
+                      ^27^27                              ^22
+  ------------------
+  |  Branch (28:11): [True: 22, False: 5]
+  |  Branch (28:44): [True: 21, False: 1]
+  ------------------
+   29|      6|        return reject(GateDecision::REJECT_LOW_CONFIDENCE);
+   30|      6|    }
+   31|       |
+   32|     22|    GateResult r;
+   33|     22|    r.decision = GateDecision::SEND;
+   34|     22|    r.request.command = match.command;
+   35|     22|    r.request.timestamp = now_ms;
+   36|     22|    return r;
+   37|     28|}
+   38|       |
+   39|       |GateResult CommandGate::evaluate_transcript(const char* transcript, float confidence,
+   40|     44|                                            uint32_t now_ms) {
+   41|     44|    return evaluate(CommandMatcher::match(transcript), confidence, now_ms);
+   42|     44|}
+   43|       |
+   44|      2|GateResult CommandGate::report_asr_failure() {
+   45|      2|    return reject(GateDecision::REJECT_ASR_FAILURE);
+   46|      2|}
+   47|       |
+   48|       |} // namespace vamc
+
+./firmware/lib/asr_client/command_matcher.cpp:
+    1|       |#include "command_matcher.h"
+    2|       |#include <ctype.h>
+    3|       |#include <string.h>
+    4|       |
+    5|       |namespace vamc {
+    6|       |
+    7|       |namespace {
+    8|       |
+    9|       |using namespace matcher_limits;
+   10|       |
+   11|       |// A phrase is a sequence of content words (after filler removal) that names
+   12|       |// one command. Matching is whole-word and in order.
+   13|       |struct Phrase {
+   14|       |    CommandId command;
+   15|       |    uint8_t length;
+   16|       |    const char* words[3];
+   17|       |};
+   18|       |
+   19|       |const Phrase kPhrases[] = {
+   20|       |    // VOLUME_UP
+   21|       |    {CommandId::VOLUME_UP, 2, {"volume", "up"}},
+   22|       |    {CommandId::VOLUME_UP, 2, {"vol", "up"}},
+   23|       |    {CommandId::VOLUME_UP, 2, {"turn", "up"}},
+   24|       |    {CommandId::VOLUME_UP, 3, {"turn", "volume", "up"}},
+   25|       |    {CommandId::VOLUME_UP, 3, {"turn", "up", "volume"}},
+   26|       |    {CommandId::VOLUME_UP, 2, {"increase", "volume"}},
+   27|       |    {CommandId::VOLUME_UP, 2, {"raise", "volume"}},
+   28|       |    {CommandId::VOLUME_UP, 1, {"louder"}},
+   29|       |    // VOLUME_DOWN
+   30|       |    {CommandId::VOLUME_DOWN, 2, {"volume", "down"}},
+   31|       |    {CommandId::VOLUME_DOWN, 2, {"vol", "down"}},
+   32|       |    {CommandId::VOLUME_DOWN, 2, {"turn", "down"}},
+   33|       |    {CommandId::VOLUME_DOWN, 3, {"turn", "volume", "down"}},
+   34|       |    {CommandId::VOLUME_DOWN, 3, {"turn", "down", "volume"}},
+   35|       |    {CommandId::VOLUME_DOWN, 2, {"decrease", "volume"}},
+   36|       |    {CommandId::VOLUME_DOWN, 2, {"lower", "volume"}},
+   37|       |    {CommandId::VOLUME_DOWN, 2, {"reduce", "volume"}},
+   38|       |    {CommandId::VOLUME_DOWN, 1, {"quieter"}},
+   39|       |    {CommandId::VOLUME_DOWN, 1, {"softer"}},
+   40|       |    // PAUSE
+   41|       |    {CommandId::PAUSE, 1, {"pause"}},
+   42|       |    // RESUME
+   43|       |    {CommandId::RESUME, 1, {"resume"}},
+   44|       |    {CommandId::RESUME, 1, {"continue"}},
+   45|       |    {CommandId::RESUME, 1, {"unpause"}},
+   46|       |    // PLAY
+   47|       |    {CommandId::PLAY, 1, {"play"}},
+   48|       |    {CommandId::PLAY, 1, {"start"}},
+   49|       |    // NEXT
+   50|       |    {CommandId::NEXT, 1, {"next"}},
+   51|       |    {CommandId::NEXT, 1, {"skip"}},
+   52|       |    // PREVIOUS
+   53|       |    {CommandId::PREVIOUS, 1, {"previous"}},
+   54|       |    {CommandId::PREVIOUS, 1, {"prev"}},
+   55|       |    {CommandId::PREVIOUS, 1, {"back"}},
+   56|       |};
+   57|       |const size_t kPhraseCount = sizeof(kPhrases) / sizeof(kPhrases[0]);
+   58|       |
+   59|       |// Words that carry no command meaning and are dropped before phrase matching:
+   60|       |// politeness, pronouns, and media nouns ("next song" == "next").
+   61|       |const char* const kFillers[] = {
+   62|       |    "a", "an", "the", "please", "can", "could", "would", "will", "you",
+   63|       |    "hey", "now", "it", "its", "this", "that", "my", "me", "just", "go",
+   64|       |    "to", "song", "track", "music", "playback", "one", "and", "then",
+   65|       |    "little", "bit", "some", "ok", "okay", "thanks", "thank",
+   66|       |};
+   67|       |const size_t kFillerCount = sizeof(kFillers) / sizeof(kFillers[0]);
+   68|       |
+   69|    239|bool is_filler(const char* word) {
+   70|  6.78k|    for (size_t i = 0; i < kFillerCount; ++i) {
+                                                       ^6.54k
+  ------------------
+  |  Branch (70:24): [True: 6.61k, False: 169]
+  ------------------
+   71|  6.61k|        if (strcmp(word, kFillers[i]) == 0) return true;
+                                                          ^70
+  ------------------
+  |  Branch (71:13): [True: 70, False: 6.54k]
+  ------------------
+   72|  6.61k|    }
+   73|    169|    return false;
+   74|    239|}
+   75|       |
+   76|       |// Returns the canonical vocabulary string equal to `word`, or nullptr.
+   77|    257|const char* find_vocabulary(const char* word) {
+   78|  5.09k|    for (size_t p = 0; p < kPhraseCount; ++p) {
+                                                       ^4.83k
+  ------------------
+  |  Branch (78:24): [True: 4.99k, False: 95]
+  ------------------
+   79|  13.5k|        for (uint8_t w = 0; w < kPhrases[p].length; ++w) {
+                                                                  ^8.54k
+  ------------------
+  |  Branch (79:29): [True: 8.70k, False: 4.83k]
+  ------------------
+   80|  8.70k|            if (strcmp(word, kPhrases[p].words[w]) == 0) return kPhrases[p].words[w];
+                                                                       ^162
+  ------------------
+  |  Branch (80:17): [True: 162, False: 8.54k]
+  ------------------
+   81|  8.70k|        }
+   82|  4.99k|    }
+   83|  1.77k|    for (size_t i = 0; i < kFillerCount; ++i) {
+                  ^95                                  ^1.67k
+  ------------------
+  |  Branch (83:24): [True: 1.74k, False: 26]
+  ------------------
+   84|  1.74k|        if (strcmp(word, kFillers[i]) == 0) return kFillers[i];
+                                                          ^69
+  ------------------
+  |  Branch (84:13): [True: 69, False: 1.67k]
+  ------------------
+   85|  1.74k|    }
+   86|     26|    return nullptr;
+   87|     95|}
+   88|       |
+   89|       |void consider_candidate(const char* word, const char* candidate, uint8_t limit,
+   90|  1.39k|                        uint8_t& best_dist, const char*& best, bool& tie) {
+   91|  1.39k|    uint8_t d = CommandMatcher::edit_distance(word, candidate);
+   92|  1.39k|    if (d > limit) return;
+                                 ^1.36k
+  ------------------
+  |  Branch (92:9): [True: 1.36k, False: 30]
+  ------------------
+   93|     30|    if (d < best_dist) {
+  ------------------
+  |  Branch (93:9): [True: 9, False: 21]
+  ------------------
+   94|      9|        best_dist = d;
+   95|      9|        best = candidate;
+   96|      9|        tie = false;
+   97|     21|    } else if (d == best_dist && best != nullptr && strcmp(best, candidate) != 0) {
+  ------------------
+  |  Branch (97:16): [True: 21, False: 0]
+  |  Branch (97:34): [True: 21, False: 0]
+  |  Branch (97:53): [True: 1, False: 20]
+  ------------------
+   98|      1|        tie = true;
+   99|      1|    }
+  100|     30|}
+  101|       |
+  102|       |// Near match: the single closest vocabulary word within the threshold.
+  103|       |// Returns nullptr if the word is too short, nothing is close enough, or two
+  104|       |// different words are equally close.
+  105|     26|const char* correct_word(const char* word) {
+  106|     26|    size_t len = strlen(word);
+  107|     26|    if (len < kFuzzyMinWordLen) return nullptr;
+                                              ^9
+  ------------------
+  |  Branch (107:9): [True: 9, False: 17]
+  ------------------
+  108|     17|    uint8_t limit = (len >= kFuzzyLongWordLen) ? kFuzzyMaxDistLong : kFuzzyMaxDistShort;
+                                                               ^7                  ^10
+  ------------------
+  |  Branch (108:21): [True: 7, False: 10]
+  ------------------
+  109|       |
+  110|     17|    uint8_t best_dist = 255;
+  111|     17|    const char* best = nullptr;
+  112|     17|    bool tie = false;
+  113|    510|    for (size_t p = 0; p < kPhraseCount; ++p) {
+                                                       ^493
+  ------------------
+  |  Branch (113:24): [True: 493, False: 17]
+  ------------------
+  114|  1.30k|        for (uint8_t w = 0; w < kPhrases[p].length; ++w) {
+                                                                  ^816
+  ------------------
+  |  Branch (114:29): [True: 816, False: 493]
+  ------------------
+  115|    816|            consider_candidate(word, kPhrases[p].words[w], limit, best_dist, best, tie);
+  116|    816|        }
+  117|    493|    }
+  118|    595|    for (size_t i = 0; i < kFillerCount; ++i) {
+                                                       ^578
+  ------------------
+  |  Branch (118:24): [True: 578, False: 17]
+  ------------------
+  119|    578|        consider_candidate(word, kFillers[i], limit, best_dist, best, tie);
+  120|    578|    }
+  121|     17|    return tie ? nullptr : best;
+                               ^1        ^16
+  ------------------
+  |  Branch (121:12): [True: 1, False: 16]
+  ------------------
+  122|     26|}
+  123|       |
+  124|    148|MatchResult make_result(MatchOutcome outcome, MatchKind kind, CommandId command) {
+  125|    148|    MatchResult r;
+  126|    148|    r.outcome = outcome;
+  127|    148|    r.kind = kind;
+  128|    148|    r.command = command;
+  129|    148|    return r;
+  130|    148|}
+  131|       |
+  132|     32|MatchResult unrecognized() {
+  133|     32|    return make_result(MatchOutcome::UNRECOGNIZED, MatchKind::NONE, CommandId::PAUSE);
+  134|     32|}
+  135|       |
+  136|       |} // namespace
+  137|       |
+  138|  1.40k|uint8_t CommandMatcher::edit_distance(const char* a, const char* b) {
+  139|  1.40k|    size_t la = strlen(a);
+  140|  1.40k|    size_t lb = strlen(b);
+  141|  1.40k|    if (la >= kMaxTokenChars || lb >= kMaxTokenChars) return 255;
+                                              ^1.40k                ^1
+  ------------------
+  |  Branch (141:9): [True: 1, False: 1.40k]
+  |  Branch (141:33): [True: 0, False: 1.40k]
+  ------------------
+  142|       |
+  143|  1.40k|    uint8_t prev[kMaxTokenChars];
+  144|  1.40k|    uint8_t curr[kMaxTokenChars];
+  145|  8.97k|    for (size_t j = 0; j <= lb; ++j) prev[j] = static_cast<uint8_t>(j);
+                                              ^7.57k^7.57k
+  ------------------
+  |  Branch (145:24): [True: 7.57k, False: 1.40k]
+  ------------------
+  146|  10.6k|    for (size_t i = 1; i <= la; ++i) {
+                                              ^9.21k
+  ------------------
+  |  Branch (146:24): [True: 9.21k, False: 1.40k]
+  ------------------
+  147|  9.21k|        curr[0] = static_cast<uint8_t>(i);
+  148|  49.8k|        for (size_t j = 1; j <= lb; ++j) {
+                                                  ^40.6k
+  ------------------
+  |  Branch (148:28): [True: 40.6k, False: 9.21k]
+  ------------------
+  149|  40.6k|            uint8_t sub = prev[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1);
+                                                                              ^2.31k^38.3k
+  ------------------
+  |  Branch (149:42): [True: 2.31k, False: 38.3k]
+  ------------------
+  150|  40.6k|            uint8_t del = prev[j] + 1;
+  151|  40.6k|            uint8_t ins = curr[j - 1] + 1;
+  152|  40.6k|            uint8_t m = sub < del ? sub : del;
+                                                  ^19.2k^21.3k
+  ------------------
+  |  Branch (152:25): [True: 19.2k, False: 21.3k]
+  ------------------
+  153|  40.6k|            curr[j] = m < ins ? m : ins;
+                                              ^27.9k^12.6k
+  ------------------
+  |  Branch (153:23): [True: 27.9k, False: 12.6k]
+  ------------------
+  154|  40.6k|        }
+  155|  9.21k|        memcpy(prev, curr, lb + 1);
+  156|  9.21k|    }
+  157|  1.40k|    return prev[lb];
+  158|  1.40k|}
+  159|       |
+  160|    148|MatchResult CommandMatcher::match(const char* transcript) {
+  161|    148|    if (transcript == nullptr) return unrecognized();
+                                             ^3
+  ------------------
+  |  Branch (161:9): [True: 3, False: 145]
+  ------------------
+  162|       |
+  163|       |    // 1. Normalise: ASCII letters/digits lowercased into words; apostrophes
+  164|       |    //    are dropped ("it's" -> "its"); everything else separates words.
+  165|    145|    char raw[kMaxTokens][kMaxTokenChars];
+  166|    145|    size_t token_count = 0;
+  167|    145|    size_t token_len = 0;
+  168|    145|    size_t i = 0;
+  169|  1.91k|    for (;; ++i) {
+                          ^1.76k
+  170|  1.91k|        if (i > kMaxTranscriptChars) return unrecognized();
+                                                   ^1
+  ------------------
+  |  Branch (170:13): [True: 1, False: 1.91k]
+  ------------------
+  171|  1.91k|        char c = transcript[i];
+  172|  1.91k|        unsigned char uc = static_cast<unsigned char>(c);
+  173|  1.91k|        bool word_char = (c != '\0') && (uc < 0x80) && isalnum(uc);
+                                                      ^1.77k         ^1.76k
+  ------------------
+  |  Branch (173:26): [True: 1.77k, False: 142]
+  |  Branch (173:41): [True: 1.76k, False: 2]
+  |  Branch (173:56): [True: 1.36k, False: 408]
+  ------------------
+  174|  1.91k|        if (word_char) {
+  ------------------
+  |  Branch (174:13): [True: 1.36k, False: 552]
+  ------------------
+  175|  1.36k|            if (token_len == 0 && token_count == kMaxTokens) return unrecognized();
+                                                ^281                       ^1
+  ------------------
+  |  Branch (175:17): [True: 281, False: 1.07k]
+  |  Branch (175:35): [True: 1, False: 280]
+  ------------------
+  176|  1.35k|            if (token_len + 1 >= kMaxTokenChars) return unrecognized();
+                                                               ^1
+  ------------------
+  |  Branch (176:17): [True: 1, False: 1.35k]
+  ------------------
+  177|  1.35k|            raw[token_count][token_len++] = static_cast<char>(tolower(uc));
+  178|  1.35k|            continue;
+  179|  1.35k|        }
+  180|    552|        if (c == '\'' && token_len > 0) continue;
+                                       ^3             ^3
+  ------------------
+  |  Branch (180:13): [True: 3, False: 549]
+  |  Branch (180:26): [True: 3, False: 0]
+  ------------------
+  181|    549|        if (token_len > 0) {
+  ------------------
+  |  Branch (181:13): [True: 279, False: 270]
+  ------------------
+  182|    279|            raw[token_count][token_len] = '\0';
+  183|    279|            ++token_count;
+  184|    279|            token_len = 0;
+  185|    279|        }
+  186|    549|        if (c == '\0') break;
+                                     ^142
+  ------------------
+  |  Branch (186:13): [True: 142, False: 407]
+  ------------------
+  187|    549|    }
+  188|       |
+  189|       |    // 2. Resolve each word to vocabulary, correcting near misses; drop fillers.
+  190|    142|    const char* content[kMaxTokens];
+  191|    142|    size_t content_count = 0;
+  192|    142|    bool corrected = false;
+  193|    381|    for (size_t t = 0; t < token_count; ++t) {
+                                                      ^239
+  ------------------
+  |  Branch (193:24): [True: 257, False: 124]
+  ------------------
+  194|    257|        const char* word = find_vocabulary(raw[t]);
+  195|    257|        if (word == nullptr) {
+  ------------------
+  |  Branch (195:13): [True: 26, False: 231]
+  ------------------
+  196|     26|            word = correct_word(raw[t]);
+  197|     26|            if (word == nullptr) return unrecognized();  // unknown word
+                                               ^18
+  ------------------
+  |  Branch (197:17): [True: 18, False: 8]
+  ------------------
+  198|      8|            corrected = true;
+  199|      8|        }
+  200|    239|        if (!is_filler(word)) content[content_count++] = word;
+                                            ^169
+  ------------------
+  |  Branch (200:13): [True: 169, False: 70]
+  ------------------
+  201|    239|    }
+  202|    124|    if (content_count == 0) return unrecognized();
+                                          ^5
+  ------------------
+  |  Branch (202:9): [True: 5, False: 119]
+  ------------------
+  203|       |
+  204|       |    // 3. Cover the content words with phrases, longest phrase first. Every
+  205|       |    //    content word must belong to a phrase; leftovers mean "not a command".
+  206|    119|    bool have_command = false;
+  207|    119|    bool ambiguous = false;
+  208|    119|    CommandId command = CommandId::PAUSE;
+  209|    119|    size_t pos = 0;
+  210|    246|    while (pos < content_count) {
+  ------------------
+  |  Branch (210:12): [True: 130, False: 116]
+  ------------------
+  211|    130|        const Phrase* best = nullptr;
+  212|  3.90k|        for (size_t p = 0; p < kPhraseCount; ++p) {
+                                                           ^3.77k
+  ------------------
+  |  Branch (212:28): [True: 3.77k, False: 130]
+  ------------------
+  213|  3.77k|            const Phrase& ph = kPhrases[p];
+  214|  3.77k|            if (pos + ph.length > content_count) continue;
+                                                               ^1.47k
+  ------------------
+  |  Branch (214:17): [True: 1.47k, False: 2.29k]
+  ------------------
+  215|  2.29k|            if (best != nullptr && ph.length <= best->length) continue;
+                                                 ^1.29k                     ^1.27k
+  ------------------
+  |  Branch (215:17): [True: 1.29k, False: 996]
+  |  Branch (215:36): [True: 1.27k, False: 16]
+  ------------------
+  216|  1.01k|            bool equal = true;
+  217|  2.07k|            for (uint8_t w = 0; w < ph.length && equal; ++w) {
+                                                               ^1.26k ^1.06k
+  ------------------
+  |  Branch (217:33): [True: 1.26k, False: 816]
+  |  Branch (217:50): [True: 1.06k, False: 196]
+  ------------------
+  218|  1.06k|                equal = strcmp(content[pos + w], ph.words[w]) == 0;
+  219|  1.06k|            }
+  220|  1.01k|            if (equal) best = &ph;
+                                     ^128
+  ------------------
+  |  Branch (220:17): [True: 128, False: 884]
+  ------------------
+  221|  1.01k|        }
+  222|    130|        if (best == nullptr) return unrecognized();
+                                           ^3
+  ------------------
+  |  Branch (222:13): [True: 3, False: 127]
+  ------------------
+  223|    127|        if (have_command && best->command != command) ambiguous = true;
+                                          ^11                       ^9
+  ------------------
+  |  Branch (223:13): [True: 11, False: 116]
+  |  Branch (223:29): [True: 9, False: 2]
+  ------------------
+  224|    127|        command = best->command;
+  225|    127|        have_command = true;
+  226|    127|        pos += best->length;
+  227|    127|    }
+  228|       |
+  229|    116|    if (ambiguous) return make_result(MatchOutcome::AMBIGUOUS, MatchKind::NONE, command);
+                                 ^9
+  ------------------
+  |  Branch (229:9): [True: 9, False: 107]
+  ------------------
+  230|    107|    return make_result(MatchOutcome::MATCHED,
+  231|    107|                       corrected ? MatchKind::FUZZY : MatchKind::PHRASE, command);
+                                                 ^8                 ^99
+  ------------------
+  |  Branch (231:24): [True: 8, False: 99]
+  ------------------
+  232|    116|}
+  233|       |
+  234|       |} // namespace vamc
+
+./firmware/lib/ble_hid/ble_hid.cpp:
+    1|       |#include "ble_hid.h"
+    2|       |#include "command_map.h"
+    3|       |
+    4|       |namespace vamc {
+    5|       |
+    6|       |namespace {
+    7|       |
+    8|       |// Default stub transport used when no custom or hardware driver is registered
+    9|       |class DefaultStubTransport : public IBleHidTransport {
+   10|       |public:
+   11|      0|    bool is_connected() const override { return false; }
+   12|      0|    bool send_consumer_key(uint16_t) override { return false; }
+   13|      0|    uint32_t get_time_ms() const override { return 0; }
+   14|      0|    void sleep_ms(uint32_t) override {}
+   15|       |};
+   16|       |
+   17|       |DefaultStubTransport g_default_transport;
+   18|       |IBleHidTransport* g_active_transport = &g_default_transport;
+   19|       |BleError g_last_error = BleError::BLE_NONE;
+   20|       |
+   21|     22|uint32_t backoff_for_retry(uint8_t retry_number) {
+   22|     22|    uint64_t delay_ms = kDefaultBackoffMs;
+   23|     40|    for (uint8_t i = 1; i < retry_number; ++i) {
+                                                        ^18
+  ------------------
+  |  Branch (23:25): [True: 18, False: 22]
+  ------------------
+   24|     18|        delay_ms *= kRetryBackoffMultiplier;
+   25|     18|        if (delay_ms >= kMaxBleLatencyBudgetMs) {
+  ------------------
+  |  Branch (25:13): [True: 0, False: 18]
+  ------------------
+   26|      0|            return kMaxBleLatencyBudgetMs;
+   27|      0|        }
+   28|     18|    }
+   29|     22|    return static_cast<uint32_t>(delay_ms);
+   30|     22|}
+   31|       |
+   32|       |} // namespace
+   33|       |
+   34|     32|void ble_set_transport(IBleHidTransport* transport) {
+   35|     32|    if (transport != nullptr) {
+  ------------------
+  |  Branch (35:9): [True: 16, False: 16]
+  ------------------
+   36|     16|        g_active_transport = transport;
+   37|     16|    } else {
+   38|     16|        g_active_transport = &g_default_transport;
+   39|     16|    }
+   40|     32|}
+   41|       |
+   42|     26|IBleHidTransport* ble_get_transport() {
+   43|     26|    return g_active_transport;
+   44|     26|}
+   45|       |
+   46|      7|BleError ble_get_last_error() {
+   47|      7|    return g_last_error;
+   48|      7|}
+   49|       |
+   50|     26|SendResult ble_send_hid_key(CommandId command_id, uint8_t retry_count) {
+   51|     26|    if (!CommandMapper::is_supported(command_id)) {
+  ------------------
+  |  Branch (51:9): [True: 0, False: 26]
+  ------------------
+   52|      0|        g_last_error = BleError::BLE_TIMEOUT;
+   53|      0|        return { SendStatus::FAILED, 0 };
+   54|      0|    }
+   55|       |
+   56|     26|    IBleHidTransport* transport = ble_get_transport();
+   57|     26|    const uint16_t usage_code = CommandMapper::to_hid_usage(command_id);
+   58|     26|    const uint32_t start_ms = transport->get_time_ms();
+   59|     26|    const uint8_t effective_retries = (retry_count > kMaxAllowedRetries) ? kMaxAllowedRetries : retry_count;
+                                                                                         ^0
+  ------------------
+  |  Branch (59:39): [True: 0, False: 26]
+  ------------------
+   60|     26|    bool link_was_available = false;
+   61|       |
+   62|     54|    for (uint8_t attempt = 0; attempt <= effective_retries; ++attempt) {
+                                                                          ^28
+  ------------------
+  |  Branch (62:31): [True: 48, False: 6]
+  ------------------
+   63|     48|        if (attempt > 0) {
+  ------------------
+  |  Branch (63:13): [True: 22, False: 26]
+  ------------------
+   64|     22|            const uint32_t backoff_ms = backoff_for_retry(attempt);
+   65|     22|            uint32_t elapsed_before_sleep = transport->get_time_ms() - start_ms;
+   66|       |
+   67|     22|            if (elapsed_before_sleep >= kMaxBleLatencyBudgetMs ||
+  ------------------
+  |  Branch (67:17): [True: 0, False: 22]
+  ------------------
+   68|     22|                backoff_ms >= kMaxBleLatencyBudgetMs - elapsed_before_sleep) {
+  ------------------
+  |  Branch (68:17): [True: 0, False: 22]
+  ------------------
+   69|      0|                g_last_error = link_was_available ? BleError::BLE_TIMEOUT : BleError::BLE_NOT_CONNECTED;
+  ------------------
+  |  Branch (69:32): [True: 0, False: 0]
+  ------------------
+   70|      0|                return { SendStatus::FAILED, elapsed_before_sleep };
+   71|      0|            }
+   72|     22|            transport->sleep_ms(backoff_ms);
+   73|     22|        }
+   74|       |
+   75|       |        // A BLE link can disappear between attempts. Re-check it after each
+   76|       |        // backoff so a transient disconnect gets the same bounded retries.
+   77|     48|        if (!transport->is_connected()) {
+  ------------------
+  |  Branch (77:13): [True: 13, False: 35]
+  ------------------
+   78|     13|            continue;
+   79|     13|        }
+   80|     35|        link_was_available = true;
+   81|       |
+   82|     35|        bool success = transport->send_consumer_key(usage_code);
+   83|     35|        uint32_t elapsed = transport->get_time_ms() - start_ms;
+   84|       |
+   85|     35|        if (success) {
+  ------------------
+  |  Branch (85:13): [True: 20, False: 15]
+  ------------------
+   86|     20|            if (elapsed <= kMaxBleLatencyBudgetMs) {
+  ------------------
+  |  Branch (86:17): [True: 19, False: 1]
+  ------------------
+   87|     19|                g_last_error = BleError::BLE_NONE;
+   88|     19|                SendStatus status = (attempt == 0) ? SendStatus::SUCCESS : SendStatus::RETRIED;
+                                                                   ^15                   ^4
+  ------------------
+  |  Branch (88:37): [True: 15, False: 4]
+  ------------------
+   89|     19|                return { status, elapsed };
+   90|     19|            } else {
+   91|      1|                g_last_error = BleError::BLE_TIMEOUT;
+   92|      1|                return { SendStatus::FAILED, elapsed };
+   93|      1|            }
+   94|     20|        }
+   95|     35|    }
+   96|       |
+   97|      6|    uint32_t total_elapsed = transport->get_time_ms() - start_ms;
+   98|      6|    g_last_error = link_was_available ? BleError::BLE_TIMEOUT : BleError::BLE_NOT_CONNECTED;
+                                                      ^3                      ^3
+  ------------------
+  |  Branch (98:20): [True: 3, False: 3]
+  ------------------
+   99|      6|    return { SendStatus::FAILED, total_elapsed };
+  100|     26|}
+  101|       |
+  102|       |} // namespace vamc
+
+./firmware/lib/command_map/command_map.cpp:
+    1|       |#include "command_map.h"
+    2|       |#include <string.h>
+    3|       |#include <ctype.h>
+    4|       |
+    5|       |namespace vamc {
+    6|       |
+    7|     41|uint16_t CommandMapper::to_hid_usage(CommandId id) {
+    8|     41|    switch (id) {
+    9|      5|        case CommandId::VOLUME_UP:
+  ------------------
+  |  Branch (9:9): [True: 5, False: 36]
+  ------------------
+   10|      5|            return hid_usage::VOLUME_INCREMENT;
+   11|      5|        case CommandId::VOLUME_DOWN:
+  ------------------
+  |  Branch (11:9): [True: 5, False: 36]
+  ------------------
+   12|      5|            return hid_usage::VOLUME_DECREMENT;
+   13|      8|        case CommandId::PAUSE:
+  ------------------
+  |  Branch (13:9): [True: 8, False: 33]
+  ------------------
+   14|      8|            return hid_usage::PAUSE;
+   15|      4|        case CommandId::RESUME:
+  ------------------
+  |  Branch (15:9): [True: 4, False: 37]
+  ------------------
+   16|      4|            return hid_usage::PLAY; // or PLAY_PAUSE
+   17|      7|        case CommandId::PLAY:
+  ------------------
+  |  Branch (17:9): [True: 7, False: 34]
+  ------------------
+   18|      7|            return hid_usage::PLAY;
+   19|      7|        case CommandId::NEXT:
+  ------------------
+  |  Branch (19:9): [True: 7, False: 34]
+  ------------------
+   20|      7|            return hid_usage::SCAN_NEXT_TRACK;
+   21|      4|        case CommandId::PREVIOUS:
+  ------------------
+  |  Branch (21:9): [True: 4, False: 37]
+  ------------------
+   22|      4|            return hid_usage::SCAN_PREV_TRACK;
+   23|      1|        default:
+  ------------------
+  |  Branch (23:9): [True: 1, False: 40]
+  ------------------
+   24|      1|            return hid_usage::NONE;
+   25|     41|    }
+   26|     41|}
+   27|       |
+   28|     34|bool CommandMapper::is_supported(CommandId id) {
+   29|     34|    switch (id) {
+   30|      4|        case CommandId::VOLUME_UP:
+  ------------------
+  |  Branch (30:9): [True: 4, False: 30]
+  ------------------
+   31|      8|        case CommandId::VOLUME_DOWN:
+  ------------------
+  |  Branch (31:9): [True: 4, False: 30]
+  ------------------
+   32|     15|        case CommandId::PAUSE:
+  ------------------
+  |  Branch (32:9): [True: 7, False: 27]
+  ------------------
+   33|     18|        case CommandId::RESUME:
+  ------------------
+  |  Branch (33:9): [True: 3, False: 31]
+  ------------------
+   34|     24|        case CommandId::PLAY:
+  ------------------
+  |  Branch (34:9): [True: 6, False: 28]
+  ------------------
+   35|     30|        case CommandId::NEXT:
+  ------------------
+  |  Branch (35:9): [True: 6, False: 28]
+  ------------------
+   36|     33|        case CommandId::PREVIOUS:
+  ------------------
+  |  Branch (36:9): [True: 3, False: 31]
+  ------------------
+   37|     33|            return true;
+   38|      1|        default:
+  ------------------
+  |  Branch (38:9): [True: 1, False: 33]
+  ------------------
+   39|      1|            return false;
+   40|     34|    }
+   41|     34|}
+   42|       |
+   43|     10|const char* CommandMapper::to_string(CommandId id) {
+   44|     10|    switch (id) {
+   45|      1|        case CommandId::VOLUME_UP:   return "VOLUME_UP";
+  ------------------
+  |  Branch (45:9): [True: 1, False: 9]
+  ------------------
+   46|      2|        case CommandId::VOLUME_DOWN: return "VOLUME_DOWN";
+  ------------------
+  |  Branch (46:9): [True: 2, False: 8]
+  ------------------
+   47|      1|        case CommandId::PAUSE:       return "PAUSE";
+  ------------------
+  |  Branch (47:9): [True: 1, False: 9]
+  ------------------
+   48|      2|        case CommandId::RESUME:      return "RESUME";
+  ------------------
+  |  Branch (48:9): [True: 2, False: 8]
+  ------------------
+   49|      1|        case CommandId::PLAY:        return "PLAY";
+  ------------------
+  |  Branch (49:9): [True: 1, False: 9]
+  ------------------
+   50|      1|        case CommandId::NEXT:        return "NEXT";
+  ------------------
+  |  Branch (50:9): [True: 1, False: 9]
+  ------------------
+   51|      1|        case CommandId::PREVIOUS:    return "PREVIOUS";
+  ------------------
+  |  Branch (51:9): [True: 1, False: 9]
+  ------------------
+   52|      1|        default:                     return "UNKNOWN";
+  ------------------
+  |  Branch (52:9): [True: 1, False: 9]
+  ------------------
+   53|     10|    }
+   54|     10|}
+   55|       |
+   56|    600|static bool str_equals_ignore_case(const char* a, const char* b) {
+   57|  1.13k|    while (*a && *b) {
+                               ^1.09k
+  ------------------
+  |  Branch (57:12): [True: 1.09k, False: 39]
+  |  Branch (57:18): [True: 1.08k, False: 12]
+  ------------------
+   58|  1.08k|        if (tolower(static_cast<unsigned char>(*a)) != tolower(static_cast<unsigned char>(*b))) {
+  ------------------
+  |  Branch (58:13): [True: 549, False: 538]
+  ------------------
+   59|    549|            return false;
+   60|    549|        }
+   61|    538|        ++a;
+   62|    538|        ++b;
+   63|    538|    }
+   64|     51|    return (*a == '\0' && *b == '\0');
+                                        ^39
+  ------------------
+  |  Branch (64:13): [True: 39, False: 12]
+  |  Branch (64:27): [True: 37, False: 2]
+  ------------------
+   65|    600|}
+   66|       |
+   67|     40|bool CommandMapper::from_string(const char* str, CommandId& out_id) {
+   68|     40|    if (!str) return false;
+                            ^1
+  ------------------
+  |  Branch (68:9): [True: 1, False: 39]
+  ------------------
+   69|       |
+   70|       |    // Skip leading whitespace
+   71|     39|    while (*str && isspace(static_cast<unsigned char>(*str))) {
+                                 ^38
+  ------------------
+  |  Branch (71:12): [True: 38, False: 1]
+  |  Branch (71:20): [True: 0, False: 38]
+  ------------------
+   72|      0|        ++str;
+   73|      0|    }
+   74|     39|    if (*str == '\0') return false;
+                                    ^1
+  ------------------
+  |  Branch (74:9): [True: 1, False: 38]
+  ------------------
+   75|       |
+   76|       |    // Check canonical names and common natural language synonyms
+   77|     38|    if (str_equals_ignore_case(str, "volume up") ||
+  ------------------
+  |  Branch (77:9): [True: 2, False: 36]
+  ------------------
+   78|     38|        str_equals_ignore_case(str, "volume_up") ||
+                      ^36
+  ------------------
+  |  Branch (78:9): [True: 1, False: 35]
+  ------------------
+   79|     38|        str_equals_ignore_case(str, "vol up") ||
+                      ^35
+  ------------------
+  |  Branch (79:9): [True: 1, False: 34]
+  ------------------
+   80|     38|        str_equals_ignore_case(str, "increase volume") ||
+                      ^34
+  ------------------
+  |  Branch (80:9): [True: 1, False: 33]
+  ------------------
+   81|     38|        str_equals_ignore_case(str, "louder")) {
+                      ^33
+  ------------------
+  |  Branch (81:9): [True: 1, False: 32]
+  ------------------
+   82|      6|        out_id = CommandId::VOLUME_UP;
+   83|      6|        return true;
+   84|      6|    }
+   85|     32|    if (str_equals_ignore_case(str, "volume down") ||
+  ------------------
+  |  Branch (85:9): [True: 1, False: 31]
+  ------------------
+   86|     32|        str_equals_ignore_case(str, "volume_down") ||
+                      ^31
+  ------------------
+  |  Branch (86:9): [True: 1, False: 30]
+  ------------------
+   87|     32|        str_equals_ignore_case(str, "vol down") ||
+                      ^30
+  ------------------
+  |  Branch (87:9): [True: 2, False: 28]
+  ------------------
+   88|     32|        str_equals_ignore_case(str, "decrease volume") ||
+                      ^28
+  ------------------
+  |  Branch (88:9): [True: 1, False: 27]
+  ------------------
+   89|     32|        str_equals_ignore_case(str, "quieter") ||
+                      ^27
+  ------------------
+  |  Branch (89:9): [True: 1, False: 26]
+  ------------------
+   90|     32|        str_equals_ignore_case(str, "softer")) {
+                      ^26
+  ------------------
+  |  Branch (90:9): [True: 1, False: 25]
+  ------------------
+   91|      7|        out_id = CommandId::VOLUME_DOWN;
+   92|      7|        return true;
+   93|      7|    }
+   94|     25|    if (str_equals_ignore_case(str, "pause") ||
+  ------------------
+  |  Branch (94:9): [True: 2, False: 23]
+  ------------------
+   95|     25|        str_equals_ignore_case(str, "pause playback") ||
+                      ^23
+  ------------------
+  |  Branch (95:9): [True: 1, False: 22]
+  ------------------
+   96|     25|        str_equals_ignore_case(str, "pause music")) {
+                      ^22
+  ------------------
+  |  Branch (96:9): [True: 1, False: 21]
+  ------------------
+   97|      4|        out_id = CommandId::PAUSE;
+   98|      4|        return true;
+   99|      4|    }
+  100|     21|    if (str_equals_ignore_case(str, "resume") ||
+  ------------------
+  |  Branch (100:9): [True: 2, False: 19]
+  ------------------
+  101|     21|        str_equals_ignore_case(str, "resume playback") ||
+                      ^19
+  ------------------
+  |  Branch (101:9): [True: 1, False: 18]
+  ------------------
+  102|     21|        str_equals_ignore_case(str, "continue")) {
+                      ^18
+  ------------------
+  |  Branch (102:9): [True: 1, False: 17]
+  ------------------
+  103|      4|        out_id = CommandId::RESUME;
+  104|      4|        return true;
+  105|      4|    }
+  106|     17|    if (str_equals_ignore_case(str, "play") ||
+  ------------------
+  |  Branch (106:9): [True: 1, False: 16]
+  ------------------
+  107|     17|        str_equals_ignore_case(str, "play music") ||
+                      ^16
+  ------------------
+  |  Branch (107:9): [True: 2, False: 14]
+  ------------------
+  108|     17|        str_equals_ignore_case(str, "start playback") ||
+                      ^14
+  ------------------
+  |  Branch (108:9): [True: 1, False: 13]
+  ------------------
+  109|     17|        str_equals_ignore_case(str, "start music")) {
+                      ^13
+  ------------------
+  |  Branch (109:9): [True: 1, False: 12]
+  ------------------
+  110|      5|        out_id = CommandId::PLAY;
+  111|      5|        return true;
+  112|      5|    }
+  113|     12|    if (str_equals_ignore_case(str, "next") ||
+  ------------------
+  |  Branch (113:9): [True: 1, False: 11]
+  ------------------
+  114|     12|        str_equals_ignore_case(str, "next track") ||
+                      ^11
+  ------------------
+  |  Branch (114:9): [True: 2, False: 9]
+  ------------------
+  115|     12|        str_equals_ignore_case(str, "next song") ||
+                      ^9
+  ------------------
+  |  Branch (115:9): [True: 1, False: 8]
+  ------------------
+  116|     12|        str_equals_ignore_case(str, "skip")) {
+                      ^8
+  ------------------
+  |  Branch (116:9): [True: 1, False: 7]
+  ------------------
+  117|      5|        out_id = CommandId::NEXT;
+  118|      5|        return true;
+  119|      5|    }
+  120|      7|    if (str_equals_ignore_case(str, "previous") ||
+  ------------------
+  |  Branch (120:9): [True: 1, False: 6]
+  ------------------
+  121|      7|        str_equals_ignore_case(str, "prev") ||
+                      ^6
+  ------------------
+  |  Branch (121:9): [True: 2, False: 4]
+  ------------------
+  122|      7|        str_equals_ignore_case(str, "previous track") ||
+                      ^4
+  ------------------
+  |  Branch (122:9): [True: 1, False: 3]
+  ------------------
+  123|      7|        str_equals_ignore_case(str, "previous song") ||
+                      ^3
+  ------------------
+  |  Branch (123:9): [True: 1, False: 2]
+  ------------------
+  124|      7|        str_equals_ignore_case(str, "back")) {
+                      ^2
+  ------------------
+  |  Branch (124:9): [True: 1, False: 1]
+  ------------------
+  125|      6|        out_id = CommandId::PREVIOUS;
+  126|      6|        return true;
+  127|      6|    }
+  128|       |
+  129|      1|    return false;
+  130|      7|}
+  131|       |
+  132|       |} // namespace vamc
+
+./firmware/lib/connectivity/authenticated_pairing.cpp:
+    1|       |#include "authenticated_pairing.h"
+    2|       |
+    3|       |namespace vamc {
+    4|       |
+    5|      8|bool AuthenticatedPairing::begin(uint32_t passkey) {
+    6|      8|    if (state_ == PairingState::AWAITING_HOST_CONFIRMATION ||
+  ------------------
+  |  Branch (6:9): [True: 0, False: 8]
+  ------------------
+    7|      8|        state_ == PairingState::PAIRED || passkey > 999999U) {
+  ------------------
+  |  Branch (7:9): [True: 0, False: 8]
+  |  Branch (7:43): [True: 1, False: 7]
+  ------------------
+    8|      1|        return false;
+    9|      1|    }
+   10|       |    // Do not start a pairing flow if the user cannot see the passkey.
+   11|      7|    if (!presentation_.show_passkey(passkey)) {
+  ------------------
+  |  Branch (11:9): [True: 1, False: 6]
+  ------------------
+   12|      1|        presentation_.clear_passkey();
+   13|      1|        state_ = PairingState::REJECTED;
+   14|      1|        return false;
+   15|      1|    }
+   16|      6|    if (!radio_.begin_passkey_pairing(passkey)) {
+  ------------------
+  |  Branch (16:9): [True: 1, False: 5]
+  ------------------
+   17|      1|        presentation_.clear_passkey();
+   18|      1|        state_ = PairingState::REJECTED;
+   19|      1|        return false;
+   20|      1|    }
+   21|      5|    state_ = PairingState::AWAITING_HOST_CONFIRMATION;
+   22|      5|    return true;
+   23|      6|}
+   24|       |
+   25|      6|void AuthenticatedPairing::on_host_result(bool bonded, PairingMethod method) {
+   26|      6|    if (state_ != PairingState::AWAITING_HOST_CONFIRMATION) {
+  ------------------
+  |  Branch (26:9): [True: 1, False: 5]
+  ------------------
+   27|      1|        return;
+   28|      1|    }
+   29|      5|    presentation_.clear_passkey();
+   30|       |    // A bond created through Just Works does not satisfy SR-002.
+   31|      5|    if (bonded && method == PairingMethod::PASSKEY) {
+                                ^4
+  ------------------
+  |  Branch (31:9): [True: 4, False: 1]
+  |  Branch (31:19): [True: 2, False: 2]
+  ------------------
+   32|      2|        state_ = PairingState::PAIRED;
+   33|      3|    } else {
+   34|      3|        if (bonded) {
+  ------------------
+  |  Branch (34:13): [True: 2, False: 1]
+  ------------------
+   35|      2|            radio_.erase_untrusted_bond();
+   36|      2|        }
+   37|      3|        state_ = PairingState::REJECTED;
+   38|      3|    }
+   39|      5|}
+   40|       |
+   41|       |} // namespace vamc
+
+./firmware/lib/connectivity/ble_discovery.cpp:
+    1|       |#include "ble_discovery.h"
+    2|       |
+    3|       |namespace vamc {
+    4|       |
+    5|      5|BleSetupResult BlePairingSetup::start_discoverable() {
+    6|      5|    if (advertising_) {
+  ------------------
+  |  Branch (6:9): [True: 1, False: 4]
+  ------------------
+    7|      1|        return BleSetupResult::ALREADY_ACTIVE;
+    8|      1|    }
+    9|      4|    if (!advertisement_.start()) {
+  ------------------
+  |  Branch (9:9): [True: 1, False: 3]
+  ------------------
+   10|      1|        return BleSetupResult::ADVERTISING_FAILED;
+   11|      1|    }
+   12|      3|    advertising_ = true;
+   13|      3|    return BleSetupResult::SUCCESS;
+   14|      4|}
+   15|       |
+   16|      4|BleSetupResult BlePairingSetup::begin_pairing(uint32_t passkey) {
+   17|      4|    if (!advertising_ || !pairing_.begin(passkey)) {
+                                       ^2
+  ------------------
+  |  Branch (17:9): [True: 2, False: 2]
+  |  Branch (17:26): [True: 0, False: 2]
+  ------------------
+   18|      2|        return BleSetupResult::PAIRING_FAILED;
+   19|      2|    }
+   20|      2|    return BleSetupResult::SUCCESS;
+   21|      4|}
+   22|       |
+   23|      2|void BlePairingSetup::on_host_result(bool bonded, PairingMethod method) {
+   24|      2|    pairing_.on_host_result(bonded, method);
+   25|      2|    if (pairing_.state() == PairingState::PAIRED ||
+  ------------------
+  |  Branch (25:9): [True: 1, False: 1]
+  ------------------
+   26|      2|        pairing_.state() == PairingState::REJECTED) {
+                      ^1
+  ------------------
+  |  Branch (26:9): [True: 1, False: 0]
+  ------------------
+   27|      2|        advertisement_.stop();
+   28|      2|        advertising_ = false;
+   29|      2|    }
+   30|      2|}
+   31|       |
+   32|       |} // namespace vamc
+
+./firmware/lib/connectivity/credential_vault.cpp:
+    1|       |#include "credential_vault.h"
+    2|       |#include <string.h>
+    3|       |#if defined(ARDUINO_ARCH_ESP32)
+    4|       |#include <esp_system.h>
+    5|       |#include <esp_random.h>
+    6|       |#include <mbedtls/gcm.h>
+    7|       |#include <mbedtls/md.h>
+    8|       |#include <mbedtls/pkcs5.h>
+    9|       |#include <mbedtls/version.h>
+   10|       |#else
+   11|       |#include <openssl/evp.h>
+   12|       |#include <openssl/rand.h>
+   13|       |#endif
+   14|       |
+   15|       |namespace vamc {
+   16|       |namespace {
+   17|       |constexpr int kIterations = 600000; // Format VA01; benchmark boot unlock on target.
+   18|     84|void wipe(void* memory, size_t size) {
+   19|     84|    volatile uint8_t* p = static_cast<volatile uint8_t*>(memory);
+   20|  5.58k|    while (size--) *p++ = 0;
+                                 ^5.49k
+  ------------------
+  |  Branch (20:12): [True: 5.49k, False: 84]
+  ------------------
+   21|     84|}
+   22|     24|bool valid(const char* s, size_t capacity, bool allow_empty) {
+   23|     24|    if (!s || (!allow_empty && !*s)) return false;
+                                             ^17   ^1
+  ------------------
+  |  Branch (23:9): [True: 0, False: 24]
+  |  Branch (23:16): [True: 17, False: 7]
+  |  Branch (23:32): [True: 1, False: 16]
+  ------------------
+   24|    308|    for (size_t i = 0; i < capacity; ++i) if (!s[i]) return true;
+                  ^23                              ^285            ^23
+  ------------------
+  |  Branch (24:24): [True: 308, False: 0]
+  |  Branch (24:47): [True: 23, False: 285]
+  ------------------
+   25|      0|    return false;
+   26|     23|}
+   27|     11|bool random_bytes(uint8_t* out, size_t length) {
+   28|       |#if defined(ARDUINO_ARCH_ESP32)
+   29|       |    // Application must initialize the radio entropy source before creating a vault.
+   30|       |    esp_fill_random(out, length);
+   31|       |    return true;
+   32|       |#else
+   33|     11|    return RAND_bytes(out, static_cast<int>(length)) == 1;
+   34|     11|#endif
+   35|     11|}
+   36|      7|bool derive(const char* pass, const uint8_t* salt, uint8_t* key) {
+   37|       |#if defined(ARDUINO_ARCH_ESP32)
+   38|       |#if MBEDTLS_VERSION_MAJOR >= 3
+   39|       |    return mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256,
+   40|       |        reinterpret_cast<const unsigned char*>(pass), strlen(pass), salt, 16,
+   41|       |        kIterations, 32, key) == 0;
+   42|       |#else
+   43|       |    mbedtls_md_context_t context;
+   44|       |    mbedtls_md_init(&context);
+   45|       |    bool ok = mbedtls_md_setup(&context, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1) == 0;
+   46|       |    if (ok) ok = mbedtls_pkcs5_pbkdf2_hmac(&context,
+   47|       |        reinterpret_cast<const unsigned char*>(pass), strlen(pass), salt, 16,
+   48|       |        kIterations, 32, key) == 0;
+   49|       |    mbedtls_md_free(&context);
+   50|       |    return ok;
+   51|       |#endif
+   52|       |#else
+   53|      7|    return PKCS5_PBKDF2_HMAC(pass, static_cast<int>(strlen(pass)), salt, 16,
+   54|      7|                            kIterations, EVP_sha256(), 32, key) == 1;
+   55|      7|#endif
+   56|      7|}
+   57|       |// Record: VA01 | salt16 | nonce12 | ciphertext98 | tag16.
+   58|     10|bool crypt(bool encrypt, const uint8_t* key, uint8_t* record, uint8_t* plain) {
+   59|       |#if defined(ARDUINO_ARCH_ESP32)
+   60|       |    mbedtls_gcm_context context;
+   61|       |    mbedtls_gcm_init(&context);
+   62|       |    int result = mbedtls_gcm_setkey(&context, MBEDTLS_CIPHER_ID_AES, key, 256);
+   63|       |    if (!result && encrypt) result = mbedtls_gcm_crypt_and_tag(&context,
+   64|       |        MBEDTLS_GCM_ENCRYPT, 98, record + 20, 12, record, 20, plain,
+   65|       |        record + 32, 16, record + 130);
+   66|       |    else if (!result) result = mbedtls_gcm_auth_decrypt(&context, 98,
+   67|       |        record + 20, 12, record, 20, record + 130, 16, record + 32, plain);
+   68|       |    mbedtls_gcm_free(&context);
+   69|       |    return result == 0;
+   70|       |#else
+   71|     10|    EVP_CIPHER_CTX* context = EVP_CIPHER_CTX_new();
+   72|     10|    if (!context) return false;
+                                ^0
+  ------------------
+  |  Branch (72:9): [True: 0, False: 10]
+  ------------------
+   73|     10|    int length = 0, final_length = 0;
+   74|     10|    bool ok = EVP_CipherInit_ex(context, EVP_aes_256_gcm(), nullptr, nullptr, nullptr, encrypt) == 1;
+   75|     10|    ok = ok && EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_SET_IVLEN, 12, nullptr) == 1;
+  ------------------
+  |  Branch (75:10): [True: 10, False: 0]
+  |  Branch (75:16): [True: 10, False: 0]
+  ------------------
+   76|     10|    ok = ok && EVP_CipherInit_ex(context, nullptr, nullptr, key, record + 20, encrypt) == 1;
+  ------------------
+  |  Branch (76:10): [True: 10, False: 0]
+  |  Branch (76:16): [True: 10, False: 0]
+  ------------------
+   77|     10|    ok = ok && EVP_CipherUpdate(context, nullptr, &length, record, 20) == 1;
+  ------------------
+  |  Branch (77:10): [True: 10, False: 0]
+  |  Branch (77:16): [True: 10, False: 0]
+  ------------------
+   78|     10|    ok = ok && EVP_CipherUpdate(context, encrypt ? record + 32 : plain, &length,
+                                                                 ^6            ^4
+  ------------------
+  |  Branch (78:10): [True: 10, False: 0]
+  |  Branch (78:16): [True: 10, False: 0]
+  |  Branch (78:42): [True: 6, False: 4]
+  ------------------
+   79|     10|                                encrypt ? plain : record + 32, 98) == 1;
+                                                        ^6      ^4
+  ------------------
+  |  Branch (79:33): [True: 6, False: 4]
+  ------------------
+   80|     10|    if (!encrypt) ok = ok && EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_SET_TAG, 16, record + 130) == 1;
+                                ^4   ^4    ^4                           ^4
+  ------------------
+  |  Branch (80:9): [True: 4, False: 6]
+  |  Branch (80:24): [True: 4, False: 0]
+  |  Branch (80:30): [True: 4, False: 0]
+  ------------------
+   81|     10|    if (ok) ok = EVP_CipherFinal_ex(context, (encrypt ? record + 32 : plain) + length, &final_length) == 1;
+                                                                      ^6            ^4
+  ------------------
+  |  Branch (81:9): [True: 10, False: 0]
+  |  Branch (81:47): [True: 6, False: 4]
+  ------------------
+   82|     10|    if (encrypt) ok = ok && EVP_CIPHER_CTX_ctrl(context, EVP_CTRL_GCM_GET_TAG, 16, record + 130) == 1;
+                               ^6   ^6    ^6                           ^6
+  ------------------
+  |  Branch (82:9): [True: 6, False: 4]
+  |  Branch (82:23): [True: 6, False: 0]
+  |  Branch (82:29): [True: 6, False: 0]
+  ------------------
+   83|     10|    EVP_CIPHER_CTX_free(context);
+   84|     10|    return ok;
+   85|     10|#endif
+   86|     10|}
+   87|       |}
+   88|     22|void CredentialVault::lock() {
+   89|     22|    wipe(key_, sizeof(key_)); wipe(salt_, sizeof(salt_)); unlocked_ = false;
+   90|     22|}
+   91|     10|bool CredentialVault::unlock(const char* passphrase) {
+   92|     10|    lock();
+   93|     10|    if (!valid(passphrase, 129, false)) return false;
+                                                      ^1
+  ------------------
+  |  Branch (93:9): [True: 1, False: 9]
+  ------------------
+   94|      9|    uint8_t record[kRecordBytes] = {}, plain[98] = {};
+   95|      9|    const int length = blob_.read(record, sizeof(record));
+   96|      9|    bool ok = length == 0 || (length == static_cast<int>(sizeof(record)) && !memcmp(record, "VA01", 4));
+                                           ^4^4                                            ^2
+  ------------------
+  |  Branch (96:15): [True: 5, False: 4]
+  |  Branch (96:31): [True: 2, False: 2]
+  |  Branch (96:77): [True: 2, False: 0]
+  ------------------
+   97|      9|    if (ok) {
+  ------------------
+  |  Branch (97:9): [True: 7, False: 2]
+  ------------------
+   98|      7|        if (length) memcpy(salt_, record + 4, 16);
+                                  ^2
+  ------------------
+  |  Branch (98:13): [True: 2, False: 5]
+  ------------------
+   99|      5|        else ok = random_bytes(salt_, 16);
+  100|      7|    }
+  101|      9|    if (ok) ok = derive(passphrase, salt_, key_);
+                          ^7
+  ------------------
+  |  Branch (101:9): [True: 7, False: 2]
+  ------------------
+  102|      9|    if (ok && length) ok = crypt(false, key_, record, plain);
+                            ^7      ^2
+  ------------------
+  |  Branch (102:9): [True: 7, False: 2]
+  |  Branch (102:15): [True: 2, False: 5]
+  ------------------
+  103|      9|    wipe(record, sizeof(record)); wipe(plain, sizeof(plain));
+  104|      9|    if (!ok) lock();
+                           ^3
+  ------------------
+  |  Branch (104:9): [True: 3, False: 6]
+  ------------------
+  105|      9|    unlocked_ = ok;
+  106|      9|    return ok;
+  107|     10|}
+  108|      8|bool CredentialVault::save_protected(const char* ssid, const char* password) {
+  109|      8|    if (!unlocked_ || !valid(ssid, 33, false) || !valid(password, 65, true)) return false;
+                                    ^6                         ^6                          ^2
+  ------------------
+  |  Branch (109:9): [True: 2, False: 6]
+  |  Branch (109:23): [True: 0, False: 6]
+  |  Branch (109:50): [True: 0, False: 6]
+  ------------------
+  110|      6|    uint8_t record[kRecordBytes] = {}, plain[98] = {};
+  111|      6|    memcpy(record, "VA01", 4); memcpy(record + 4, salt_, 16);
+  112|      6|    strcpy(reinterpret_cast<char*>(plain), ssid);
+  113|      6|    strcpy(reinterpret_cast<char*>(plain + 33), password);
+  114|      6|    bool ok = random_bytes(record + 20, 12) && crypt(true, key_, record, plain);
+  ------------------
+  |  Branch (114:15): [True: 6, False: 0]
+  |  Branch (114:48): [True: 6, False: 0]
+  ------------------
+  115|      6|    if (ok) ok = blob_.write(record, sizeof(record));
+  ------------------
+  |  Branch (115:9): [True: 6, False: 0]
+  ------------------
+  116|      6|    wipe(record, sizeof(record)); wipe(plain, sizeof(plain));
+  117|      6|    return ok;
+  118|      8|}
+  119|      3|bool CredentialVault::load(char (&ssid)[33], char (&password)[65]) {
+  120|      3|    wipe(ssid, sizeof(ssid)); wipe(password, sizeof(password));
+  121|      3|    if (!unlocked_) return false;
+                                  ^1
+  ------------------
+  |  Branch (121:9): [True: 1, False: 2]
+  ------------------
+  122|      2|    uint8_t record[kRecordBytes] = {}, plain[98] = {};
+  123|      2|    bool ok = blob_.read(record, sizeof(record)) == static_cast<int>(sizeof(record));
+  124|      2|    ok = ok && !memcmp(record, "VA01", 4) && !memcmp(record + 4, salt_, 16) && crypt(false, key_, record, plain);
+  ------------------
+  |  Branch (124:10): [True: 2, False: 0]
+  |  Branch (124:16): [True: 2, False: 0]
+  |  Branch (124:46): [True: 2, False: 0]
+  |  Branch (124:80): [True: 1, False: 1]
+  ------------------
+  125|      2|    ok = ok && valid(reinterpret_cast<char*>(plain), 33, false) && valid(reinterpret_cast<char*>(plain + 33), 65, true);
+                             ^1                                                  ^1
+  ------------------
+  |  Branch (125:10): [True: 1, False: 1]
+  |  Branch (125:16): [True: 1, False: 0]
+  |  Branch (125:68): [True: 1, False: 0]
+  ------------------
+  126|      2|    if (ok) { memcpy(ssid, plain, 33); memcpy(password, plain + 33, 65); }
+                          ^1
+  ------------------
+  |  Branch (126:9): [True: 1, False: 1]
+  ------------------
+  127|      2|    wipe(record, sizeof(record)); wipe(plain, sizeof(plain));
+  128|      2|    return ok;
+  129|      3|}
+  130|      1|bool CredentialVault::erase() { lock(); return blob_.erase(); }
+  131|       |} // namespace vamc
+
+./firmware/lib/connectivity/factory_reset.cpp:
+    1|       |#include "factory_reset.h"
+    2|       |
+    3|       |namespace vamc {
+    4|       |
+    5|      4|FactoryResetResult FactoryReset::on_confirmed_long_press() {
+    6|       |    // Try both erasures even if the first fails. Provisioning may restart only
+    7|       |    // after both stores report success; a partial wipe is never called success.
+    8|      4|    const bool wifi_cleared = storage_.clear_wifi_credentials();
+    9|      4|    const bool ble_cleared = storage_.clear_ble_pairing_data();
+   10|      4|    if (!wifi_cleared || !ble_cleared) {
+                                       ^3
+  ------------------
+  |  Branch (10:9): [True: 1, False: 3]
+  |  Branch (10:26): [True: 1, False: 2]
+  ------------------
+   11|      2|        return FactoryResetResult::CLEAR_FAILED;
+   12|      2|    }
+   13|      2|    if (!storage_.restart_provisioning()) {
+  ------------------
+  |  Branch (13:9): [True: 1, False: 1]
+  ------------------
+   14|      1|        return FactoryResetResult::PROVISIONING_RESTART_FAILED;
+   15|      1|    }
+   16|      1|    return FactoryResetResult::SUCCESS;
+   17|      2|}
+   18|       |
+   19|       |} // namespace vamc
+
+./firmware/lib/connectivity/wifi_provisioning.cpp:
+    1|       |#include "wifi_provisioning.h"
+    2|       |#include <string.h>
+    3|       |
+    4|       |namespace vamc {
+    5|       |namespace {
+    6|     12|bool fits(const char* text, size_t capacity) {
+    7|     12|    if (!text) return false;
+                             ^0
+  ------------------
+  |  Branch (7:9): [True: 0, False: 12]
+  ------------------
+    8|    171|    for (size_t i = 0; i < capacity; ++i) if (!text[i]) return true;
+                  ^12                              ^159 ^170^170      ^11
+  ------------------
+  |  Branch (8:24): [True: 170, False: 1]
+  |  Branch (8:47): [True: 11, False: 159]
+  ------------------
+    9|      1|    return false;
+   10|     12|}
+   11|       |}
+   12|     24|void WifiProvisioning::clear_pending() {
+   13|     24|    volatile char* a = pending_ssid_;
+   14|     24|    volatile char* b = pending_password_;
+   15|    816|    for (size_t i = 0; i < sizeof(pending_ssid_); ++i) a[i] = 0;
+                                                                ^792 ^792
+  ------------------
+  |  Branch (15:24): [True: 792, False: 24]
+  ------------------
+   16|  1.58k|    for (size_t i = 0; i < sizeof(pending_password_); ++i) b[i] = 0;
+                                                                    ^1.56k^1.56k
+  ------------------
+  |  Branch (16:24): [True: 1.56k, False: 24]
+  ------------------
+   17|     24|    connecting_ = false;
+   18|     24|}
+   19|     12|void WifiProvisioning::cancel() {
+   20|     12|    if (active_) { connection_.cancel(); portal_.stop(); }
+                               ^3
+  ------------------
+  |  Branch (20:9): [True: 3, False: 9]
+  ------------------
+   21|     12|    active_ = false;
+   22|     12|    clear_pending();
+   23|     12|}
+   24|      9|WifiProvisioningResult WifiProvisioning::start(unsigned long now_ms) {
+   25|      9|    cancel();
+   26|      9|    started_at_ms_ = now_ms;
+   27|      9|    active_ = portal_.start();
+   28|      9|    return active_ ? WifiProvisioningResult::SUCCESS : WifiProvisioningResult::PORTAL_START_FAILED;
+                                                                     ^0
+  ------------------
+  |  Branch (28:12): [True: 9, False: 0]
+  ------------------
+   29|      9|}
+   30|     14|WifiProvisioningResult WifiProvisioning::poll(unsigned long now_ms) {
+   31|     14|    if (!active_) return WifiProvisioningResult::INACTIVE;
+                                ^2
+  ------------------
+  |  Branch (31:9): [True: 2, False: 12]
+  ------------------
+   32|     12|    if (static_cast<unsigned long>(now_ms - started_at_ms_) >= kConnectionTimeoutMs) {
+  ------------------
+  |  Branch (32:9): [True: 2, False: 10]
+  ------------------
+   33|      2|        cancel();
+   34|      2|        return WifiProvisioningResult::CONNECTION_TIMEOUT;
+   35|      2|    }
+   36|     10|    if (connecting_ && connection_.connected()) {
+                                     ^2
+  ------------------
+  |  Branch (36:9): [True: 2, False: 8]
+  |  Branch (36:24): [True: 2, False: 0]
+  ------------------
+   37|      2|        const bool saved = credential_store_.save_protected(pending_ssid_, pending_password_);
+   38|      2|        portal_.stop();
+   39|      2|        active_ = false;
+   40|      2|        clear_pending();
+   41|      2|        return saved ? WifiProvisioningResult::SUCCESS : WifiProvisioningResult::CREDENTIAL_SAVE_FAILED;
+                                     ^1                                ^1
+  ------------------
+  |  Branch (41:16): [True: 1, False: 1]
+  ------------------
+   42|      2|    }
+   43|      8|    if (!connecting_) {
+  ------------------
+  |  Branch (43:9): [True: 8, False: 0]
+  ------------------
+   44|      8|        WifiCredentials credentials{nullptr, nullptr};
+   45|      8|        if (!portal_.poll_submission(credentials)) return WifiProvisioningResult::SUCCESS;
+                                                                 ^1
+  ------------------
+  |  Branch (45:13): [True: 1, False: 7]
+  ------------------
+   46|      7|        if (!fits(credentials.ssid, sizeof(pending_ssid_)) || !credentials.ssid[0] ||
+                                                                            ^6
+  ------------------
+  |  Branch (46:13): [True: 1, False: 6]
+  |  Branch (46:63): [True: 1, False: 5]
+  ------------------
+   47|      7|            !fits(credentials.password, sizeof(pending_password_)))
+                          ^5
+  ------------------
+  |  Branch (47:13): [True: 0, False: 5]
+  ------------------
+   48|      2|            return WifiProvisioningResult::INVALID_CREDENTIALS;
+   49|      5|        strcpy(pending_ssid_, credentials.ssid);
+   50|      5|        strcpy(pending_password_, credentials.password);
+   51|      5|        if (!connection_.begin(pending_ssid_, pending_password_)) {
+  ------------------
+  |  Branch (51:13): [True: 1, False: 4]
+  ------------------
+   52|      1|            clear_pending();
+   53|      1|            return WifiProvisioningResult::CONNECTION_START_FAILED;
+   54|      1|        }
+   55|      4|        connecting_ = true;
+   56|      4|    }
+   57|      4|    return WifiProvisioningResult::SUCCESS;
+   58|      8|}
+   59|       |} // namespace vamc
+
+./firmware/lib/diagnostics_ota/diagnostics_ota.cpp:
+    1|       |#include "diagnostics_ota.h"
+    2|       |#include "command_map.h"
+    3|       |#include <stdio.h>
+    4|       |
+    5|       |namespace vamc {
+    6|       |
+    7|       |CircularLogBuffer::CircularLogBuffer(size_t capacity)
+    8|      4|    : capacity_((capacity == 0) ? 1 : capacity),
+                                                ^0
+  ------------------
+  |  Branch (8:17): [True: 0, False: 4]
+  ------------------
+    9|      4|      count_(0),
+   10|      4|      head_(0),
+   11|      4|      buffer_(new LogEntry[capacity_]) {}
+   12|       |
+   13|      4|CircularLogBuffer::~CircularLogBuffer() {
+   14|      4|    delete[] buffer_;
+   15|      4|}
+   16|       |
+   17|     11|void CircularLogBuffer::append(const LogEntry& entry) {
+   18|     11|    buffer_[head_] = entry;
+   19|     11|    head_ = (head_ + 1) % capacity_;
+   20|     11|    if (count_ < capacity_) {
+  ------------------
+  |  Branch (20:9): [True: 9, False: 2]
+  ------------------
+   21|      9|        ++count_;
+   22|      9|    }
+   23|     11|}
+   24|       |
+   25|      1|void CircularLogBuffer::clear() {
+   26|      1|    count_ = 0;
+   27|      1|    head_ = 0;
+   28|      1|}
+   29|       |
+   30|      8|bool CircularLogBuffer::get_entry(size_t index, LogEntry& out_entry) const {
+   31|      8|    if (index >= count_) {
+  ------------------
+  |  Branch (31:9): [True: 1, False: 7]
+  ------------------
+   32|      1|        return false;
+   33|      1|    }
+   34|       |
+   35|       |    // Determine position of the oldest entry in the circular buffer
+   36|      7|    size_t oldest_index = (count_ == capacity_) ? head_ : 0;
+                                                                ^5      ^2
+  ------------------
+  |  Branch (36:27): [True: 5, False: 2]
+  ------------------
+   37|      7|    size_t physical_index = (oldest_index + index) % capacity_;
+   38|       |
+   39|      7|    out_entry = buffer_[physical_index];
+   40|      7|    return true;
+   41|      8|}
+   42|       |
+   43|      2|size_t CircularLogBuffer::format_entry(const LogEntry& entry, char* out_buf, size_t buf_size) {
+   44|      2|    if (!out_buf || buf_size == 0) return 0;
+                                                 ^0
+  ------------------
+  |  Branch (44:9): [True: 0, False: 2]
+  |  Branch (44:21): [True: 0, False: 2]
+  ------------------
+   45|       |
+   46|      2|    const char* cmd_name = CommandMapper::to_string(entry.command);
+   47|      2|    int written = snprintf(out_buf, buf_size, "[TS:%u ms] CMD:%s ERR:0x%04X",
+   48|      2|                           static_cast<unsigned>(entry.timestamp),
+   49|      2|                           cmd_name,
+   50|      2|                           static_cast<unsigned>(entry.error_code));
+   51|       |
+   52|      2|    if (written < 0) return 0;
+                                   ^0
+  ------------------
+  |  Branch (52:9): [True: 0, False: 2]
+  ------------------
+   53|      2|    return (static_cast<size_t>(written) >= buf_size) ? (buf_size - 1) : static_cast<size_t>(written);
+                                                                      ^0
+  ------------------
+  |  Branch (53:12): [True: 0, False: 2]
+  ------------------
+   54|      2|}
+   55|       |
+   56|      1|void CircularLogBuffer::dump(void (*print_fn)(const char* line)) const {
+   57|      1|    if (!print_fn) return;
+                                 ^0
+  ------------------
+  |  Branch (57:9): [True: 0, False: 1]
+  ------------------
+   58|       |
+   59|      1|    char line_buf[128];
+   60|      3|    for (size_t i = 0; i < count_; ++i) {
+                                                 ^2
+  ------------------
+  |  Branch (60:24): [True: 2, False: 1]
+  ------------------
+   61|      2|        LogEntry entry;
+   62|      2|        if (get_entry(i, entry)) {
+  ------------------
+  |  Branch (62:13): [True: 2, False: 0]
+  ------------------
+   63|      2|            format_entry(entry, line_buf, sizeof(line_buf));
+   64|      2|            print_fn(line_buf);
+   65|      2|        }
+   66|      2|    }
+   67|      1|}
+   68|       |
+   69|       |} // namespace vamc
+
+./firmware/lib/feedback/feedback.cpp:
+    1|       |#include "feedback.h"
+    2|       |
+    3|       |namespace vamc {
+    4|       |
+    5|       |FeedbackController::FeedbackController(ILedDriver* led, IBuzzerDriver* buzzer)
+    6|      3|    : led_driver_(led),
+    7|      3|      buzzer_driver_(buzzer),
+    8|      3|      last_state_(FeedbackState::MUTED),
+    9|      3|      last_duration_ms_(0),
+   10|      3|      last_color_(colors::OFF),
+   11|      3|      last_tone_freq_(0) {}
+   12|       |
+   13|      0|void FeedbackController::set_led_driver(ILedDriver* led) {
+   14|      0|    led_driver_ = led;
+   15|      0|}
+   16|       |
+   17|      0|void FeedbackController::set_buzzer_driver(IBuzzerDriver* buzzer) {
+   18|      0|    buzzer_driver_ = buzzer;
+   19|      0|}
+   20|       |
+   21|      7|uint32_t FeedbackController::get_pattern_duration_ms(FeedbackState state) const {
+   22|      7|    switch (state) {
+   23|      1|        case FeedbackState::LISTENING:   return 0;   // Static steady indication
+  ------------------
+  |  Branch (23:9): [True: 1, False: 6]
+  ------------------
+   24|      1|        case FeedbackState::RECOGNIZED:  return 80;  // Brief acknowledge chirp
+  ------------------
+  |  Branch (24:9): [True: 1, False: 6]
+  ------------------
+   25|      2|        case FeedbackState::SUCCESS:     return 200; // Success flash & chime (well within 1000ms budget)
+  ------------------
+  |  Branch (25:9): [True: 2, False: 5]
+  ------------------
+   26|      2|        case FeedbackState::ERROR:       return 300; // Warning beep & blink
+  ------------------
+  |  Branch (26:9): [True: 2, False: 5]
+  ------------------
+   27|      1|        case FeedbackState::LOW_BATTERY: return 150; // Alert blip
+  ------------------
+  |  Branch (27:9): [True: 1, False: 6]
+  ------------------
+   28|      0|        case FeedbackState::MUTED:       return 0;   // Static mute indication
+  ------------------
+  |  Branch (28:9): [True: 0, False: 7]
+  ------------------
+   29|      0|        default:                         return 0;
+  ------------------
+  |  Branch (29:9): [True: 0, False: 7]
+  ------------------
+   30|      7|    }
+   31|      7|}
+   32|       |
+   33|      7|void FeedbackController::show(FeedbackState state) {
+   34|      7|    last_state_ = state;
+   35|      7|    last_duration_ms_ = get_pattern_duration_ms(state);
+   36|       |
+   37|      7|    RgbColor color = colors::OFF;
+   38|      7|    uint16_t tone_freq = 0;
+   39|      7|    uint32_t tone_dur = 0;
+   40|       |
+   41|      7|    switch (state) {
+  ------------------
+  |  Branch (41:13): [True: 7, False: 0]
+  ------------------
+   42|      1|        case FeedbackState::LISTENING:
+  ------------------
+  |  Branch (42:9): [True: 1, False: 6]
+  ------------------
+   43|      1|            color = colors::BLUE;
+   44|      1|            tone_freq = 0;
+   45|      1|            tone_dur = 0;
+   46|      1|            break;
+   47|       |
+   48|      1|        case FeedbackState::RECOGNIZED:
+  ------------------
+  |  Branch (48:9): [True: 1, False: 6]
+  ------------------
+   49|      1|            color = colors::YELLOW;
+   50|      1|            tone_freq = 1200;
+   51|      1|            tone_dur = 80;
+   52|      1|            break;
+   53|       |
+   54|      2|        case FeedbackState::SUCCESS:
+  ------------------
+  |  Branch (54:9): [True: 2, False: 5]
+  ------------------
+   55|      2|            color = colors::GREEN;
+   56|      2|            tone_freq = 2000;
+   57|      2|            tone_dur = 150;
+   58|      2|            break;
+   59|       |
+   60|      2|        case FeedbackState::ERROR:
+  ------------------
+  |  Branch (60:9): [True: 2, False: 5]
+  ------------------
+   61|      2|            color = colors::RED;
+   62|      2|            tone_freq = 400;
+   63|      2|            tone_dur = 250;
+   64|      2|            break;
+   65|       |
+   66|      1|        case FeedbackState::LOW_BATTERY:
+  ------------------
+  |  Branch (66:9): [True: 1, False: 6]
+  ------------------
+   67|      1|            color = colors::ORANGE;
+   68|      1|            tone_freq = 800;
+   69|      1|            tone_dur = 100;
+   70|      1|            break;
+   71|       |
+   72|      0|        case FeedbackState::MUTED:
+  ------------------
+  |  Branch (72:9): [True: 0, False: 7]
+  ------------------
+   73|      0|            color = colors::RED;
+   74|      0|            tone_freq = 0;
+   75|      0|            tone_dur = 0;
+   76|      0|            break;
+   77|      7|    }
+   78|       |
+   79|      7|    last_color_ = color;
+   80|      7|    last_tone_freq_ = tone_freq;
+   81|       |
+   82|      7|    if (led_driver_ != nullptr) {
+  ------------------
+  |  Branch (82:9): [True: 5, False: 2]
+  ------------------
+   83|      5|        if (color == colors::OFF) {
+  ------------------
+  |  Branch (83:13): [True: 0, False: 5]
+  ------------------
+   84|      0|            led_driver_->turn_off();
+   85|      5|        } else {
+   86|      5|            led_driver_->set_color(color);
+   87|      5|        }
+   88|      5|    }
+   89|       |
+   90|      7|    if (buzzer_driver_ != nullptr) {
+  ------------------
+  |  Branch (90:9): [True: 5, False: 2]
+  ------------------
+   91|      5|        if (tone_freq > 0) {
+  ------------------
+  |  Branch (91:13): [True: 4, False: 1]
+  ------------------
+   92|      4|            buzzer_driver_->play_tone(tone_freq, tone_dur);
+   93|      4|        } else {
+   94|      1|            buzzer_driver_->stop();
+   95|      1|        }
+   96|      5|    }
+   97|      7|}
+   98|       |
+   99|       |} // namespace vamc
+
+./firmware/lib/pipeline/command_dispatch.cpp:
+    1|       |#include "command_dispatch.h"
+    2|       |namespace vamc {
+    3|     14|DispatchResult CommandDispatch::on_recognized_text(const char* text, float confidence, uint32_t now_ms) {
+    4|     14|    const GateResult gate = gate_.evaluate_transcript(text, confidence, now_ms);
+    5|     14|    if (!gate.should_send()) return {gate.decision, false, {SendStatus::FAILED, 0}};
+                                           ^4
+  ------------------
+  |  Branch (5:9): [True: 4, False: 10]
+  ------------------
+    6|     10|    feedback_.show(FeedbackState::RECOGNIZED);
+    7|     10|    const SendResult sent = ble_send_hid_key(gate.request.command);
+    8|     10|    feedback_.show(sent.status == SendStatus::FAILED ? FeedbackState::ERROR : FeedbackState::SUCCESS);
+                                                                     ^2                     ^8
+  ------------------
+  |  Branch (8:20): [True: 2, False: 8]
+  ------------------
+    9|     10|    return {gate.decision, true, sent};
+   10|     14|}
+   11|      1|DispatchResult CommandDispatch::on_recognition_failure() {
+   12|      1|    return {gate_.report_asr_failure().decision, false, {SendStatus::FAILED, 0}};
+   13|      1|}
+   14|       |}
+

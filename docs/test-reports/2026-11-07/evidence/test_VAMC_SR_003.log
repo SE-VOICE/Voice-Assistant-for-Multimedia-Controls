@@ -1,0 +1,10 @@
+./firmware/test/test_VAMC_SR_003/test_main.cpp:82:test_TC_SEC_03_ciphertext_roundtrip_and_reboot_unlock:PASS
+./firmware/test/test_VAMC_SR_003/test_main.cpp:83:test_TC_SEC_03_wrong_passphrase_fails_closed:PASS
+./firmware/test/test_VAMC_SR_003/test_main.cpp:84:test_TC_SEC_03_tampered_tag_clears_outputs:PASS
+./firmware/test/test_VAMC_SR_003/test_main.cpp:85:test_TC_SEC_03_fresh_nonce_and_reset:PASS
+./firmware/test/test_VAMC_SR_003/test_main.cpp:86:test_TC_SEC_03_storage_errors_and_empty_passphrase:PASS
+./firmware/test/test_VAMC_SR_003/test_main.cpp:87:test_TC_SEC_03_corrupt_format_is_not_overwritten:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK

@@ -1,0 +1,16 @@
+./firmware/test/test_VAMC_F_005/test_main.cpp:235:test_TC_ASR_02_exact_phrases_map_to_all_7_commands:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:236:test_TC_ASR_02_user_story_turn_it_up:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:237:test_TC_ASR_02_near_synonyms_for_every_command:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:238:test_case_punctuation_and_whitespace_are_ignored:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:239:test_near_match_corrects_misrecognised_words:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:240:test_near_match_does_not_guess:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:241:test_consistent_with_command_mapper_synonyms:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:242:test_unsupported_or_empty_transcripts_are_unrecognized:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:243:test_conflicting_commands_are_ambiguous:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:244:test_repeated_same_command_is_still_one_match:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:245:test_input_limits_reject_rather_than_truncate:PASS
+./firmware/test/test_VAMC_F_005/test_main.cpp:246:test_edit_distance:PASS
+
+-----------------------
+12 Tests 0 Failures 0 Ignored 
+OK

@@ -1,0 +1,10 @@
+./firmware/test/test_reset_button/test_main.cpp:52:test_TC_CONN_03_held_at_boot_requires_release:PASS
+./firmware/test/test_reset_button/test_main.cpp:53:test_TC_CONN_03_short_press_and_bounce_cannot_accumulate:PASS
+./firmware/test/test_reset_button/test_main.cpp:54:test_TC_CONN_03_one_reset_per_hold_rearms_after_release:PASS
+./firmware/test/test_reset_button/test_main.cpp:55:test_TC_CONN_03_clock_wrap_is_safe:PASS
+./firmware/test/test_reset_button/test_main.cpp:56:test_TC_CONN_03_zero_duration_disables_reset:PASS
+./firmware/test/test_reset_button/test_main.cpp:57:test_TC_CONN_03_approved_five_second_boundary:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK

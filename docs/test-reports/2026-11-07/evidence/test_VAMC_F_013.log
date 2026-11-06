@@ -1,0 +1,7 @@
+./firmware/test/test_VAMC_F_013/test_main.cpp:75:test_TC_CONN_03_clears_both_stores_then_restarts_provisioning:PASS
+./firmware/test/test_VAMC_F_013/test_main.cpp:76:test_TC_CONN_03_clear_failure_still_attempts_both_and_blocks_restart:PASS
+./firmware/test/test_VAMC_F_013/test_main.cpp:77:test_TC_CONN_03_restart_failure_is_reported:PASS
+
+-----------------------
+3 Tests 0 Failures 0 Ignored 
+OK

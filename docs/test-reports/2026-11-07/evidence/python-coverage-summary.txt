@@ -1,0 +1,10 @@
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+companion/laptop_prototype/command_classifier.py       7      0      2      0   100%
+companion/laptop_prototype/command_mapper.py           3      0      0      0   100%
+companion/laptop_prototype/main.py                    34      4     10      3    84%   17, 33-34, 40
+companion/laptop_prototype/media_controller.py        25     15     12      1    41%   18-35
+companion/laptop_prototype/receive_audio.py           43     43     10      0     0%   2-79
+companion/laptop_prototype/speech_to_text.py           8      8      2      0     0%   3-11
+----------------------------------------------------------------------------------------------
+TOTAL                                                120     70     36      4    41%
