@@ -16,7 +16,18 @@ public:
 
 DefaultStubTransport g_default_transport;
 IBleHidTransport* g_active_transport = &g_default_transport;
-BleError g_last_error = BleError::BLE_NOT_CONNECTED;
+BleError g_last_error = BleError::BLE_NONE;
+
+uint32_t backoff_for_retry(uint8_t retry_number) {
+    uint64_t delay_ms = kDefaultBackoffMs;
+    for (uint8_t i = 1; i < retry_number; ++i) {
+        delay_ms *= kRetryBackoffMultiplier;
+        if (delay_ms >= kMaxBleLatencyBudgetMs) {
+            return kMaxBleLatencyBudgetMs;
+        }
+    }
+    return static_cast<uint32_t>(delay_ms);
+}
 
 } // namespace
 
@@ -43,32 +54,37 @@ SendResult ble_send_hid_key(CommandId command_id, uint8_t retry_count) {
     }
 
     IBleHidTransport* transport = ble_get_transport();
-    if (!transport->is_connected()) {
-        g_last_error = BleError::BLE_NOT_CONNECTED;
-        return { SendStatus::FAILED, 0 };
-    }
-
     const uint16_t usage_code = CommandMapper::to_hid_usage(command_id);
     const uint32_t start_ms = transport->get_time_ms();
     const uint8_t effective_retries = (retry_count > kMaxAllowedRetries) ? kMaxAllowedRetries : retry_count;
+    bool link_was_available = false;
 
     for (uint8_t attempt = 0; attempt <= effective_retries; ++attempt) {
         if (attempt > 0) {
-            uint32_t backoff_ms = kDefaultBackoffMs * attempt;
+            const uint32_t backoff_ms = backoff_for_retry(attempt);
             uint32_t elapsed_before_sleep = transport->get_time_ms() - start_ms;
 
-            if (elapsed_before_sleep + backoff_ms >= kMaxBleLatencyBudgetMs) {
-                g_last_error = BleError::BLE_TIMEOUT;
+            if (elapsed_before_sleep >= kMaxBleLatencyBudgetMs ||
+                backoff_ms >= kMaxBleLatencyBudgetMs - elapsed_before_sleep) {
+                g_last_error = link_was_available ? BleError::BLE_TIMEOUT : BleError::BLE_NOT_CONNECTED;
                 return { SendStatus::FAILED, elapsed_before_sleep };
             }
             transport->sleep_ms(backoff_ms);
         }
+
+        // A BLE link can disappear between attempts. Re-check it after each
+        // backoff so a transient disconnect gets the same bounded retries.
+        if (!transport->is_connected()) {
+            continue;
+        }
+        link_was_available = true;
 
         bool success = transport->send_consumer_key(usage_code);
         uint32_t elapsed = transport->get_time_ms() - start_ms;
 
         if (success) {
             if (elapsed <= kMaxBleLatencyBudgetMs) {
+                g_last_error = BleError::BLE_NONE;
                 SendStatus status = (attempt == 0) ? SendStatus::SUCCESS : SendStatus::RETRIED;
                 return { status, elapsed };
             } else {
@@ -79,7 +95,7 @@ SendResult ble_send_hid_key(CommandId command_id, uint8_t retry_count) {
     }
 
     uint32_t total_elapsed = transport->get_time_ms() - start_ms;
-    g_last_error = BleError::BLE_TIMEOUT;
+    g_last_error = link_was_available ? BleError::BLE_TIMEOUT : BleError::BLE_NOT_CONNECTED;
     return { SendStatus::FAILED, total_elapsed };
 }
 

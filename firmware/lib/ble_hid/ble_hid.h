@@ -12,8 +12,17 @@ constexpr uint32_t kMaxBleLatencyBudgetMs = 2000;
 // Maximum retry limit per VAMC-F-009 specification
 constexpr uint8_t kMaxAllowedRetries = 3;
 
-// Base retry backoff time in milliseconds
-constexpr uint32_t kDefaultBackoffMs = 50;
+// Retry timing can be tuned per build without changing the BLE module.
+#ifndef VAMC_BLE_RETRY_BACKOFF_BASE_MS
+#define VAMC_BLE_RETRY_BACKOFF_BASE_MS 50
+#endif
+#ifndef VAMC_BLE_RETRY_BACKOFF_MULTIPLIER
+#define VAMC_BLE_RETRY_BACKOFF_MULTIPLIER 2
+#endif
+constexpr uint32_t kDefaultBackoffMs = VAMC_BLE_RETRY_BACKOFF_BASE_MS;
+constexpr uint8_t kRetryBackoffMultiplier = VAMC_BLE_RETRY_BACKOFF_MULTIPLIER;
+static_assert(kDefaultBackoffMs > 0, "BLE retry backoff must be non-zero");
+static_assert(kRetryBackoffMultiplier > 0, "BLE retry multiplier must be non-zero");
 
 // Hardware/Protocol abstraction interface for BLE HID transmission
 class IBleHidTransport {
@@ -34,8 +43,11 @@ IBleHidTransport* ble_get_transport();
 // Retrieve the most recent error code
 BleError ble_get_last_error();
 
-// Transmits recognized command as a BLE HID media key event per SAD 4.3.
+// Transmits a recognized command as a BLE HID media key event per SAD 4.3.
+// The default matches VAMC-F-009: one initial attempt plus up to three retries.
+// Pass a smaller retry_count for callers with a tighter retry policy.
 // Returns SendResult containing execution status and latency in milliseconds.
-SendResult ble_send_hid_key(CommandId command_id, uint8_t retry_count = 0);
+SendResult ble_send_hid_key(CommandId command_id,
+                            uint8_t retry_count = kMaxAllowedRetries);
 
 } // namespace vamc
