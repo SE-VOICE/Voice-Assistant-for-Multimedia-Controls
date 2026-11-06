@@ -4,6 +4,11 @@ A hardware-based, voice-controlled multimedia remote built on **ESP32**. Say a w
 
 **Team 3**
 
+Experimental contribution by [@dheekshithgs](https://github.com/dheekshithgs):
+[USB/laptop voice-assistant prototype](companion/laptop_prototype/README.md).
+This optional prototype is separate from the target ESP32 recognition/BLE path;
+see its documented test results and limitations before running it.
+
 | SRN | Name | Role |
 |---|---|---|
 | PES2UG24CS154 | Dhanush S S | Project Manager & Integration Lead |
