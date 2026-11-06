@@ -1,0 +1,17 @@
+name: Experimental companion tests
+on:
+  pull_request:
+    paths: ['companion/laptop_prototype/**', '.github/workflows/companion-tests.yml']
+  push:
+    branches: [main]
+    paths: ['companion/laptop_prototype/**', '.github/workflows/companion-tests.yml']
+jobs:
+  portable-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m compileall -q companion/laptop_prototype
+      - run: python -m unittest discover -s companion/laptop_prototype/tests -v
