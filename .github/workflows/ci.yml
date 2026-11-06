@@ -15,5 +15,6 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install platformio==6.2.0
+      - run: sudo apt-get update && sudo apt-get install -y libssl-dev
       - name: Run portable firmware suite
         run: pio test -d firmware -e native
