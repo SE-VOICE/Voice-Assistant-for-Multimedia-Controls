@@ -1,5 +1,6 @@
 #include <unity.h>
 #include "wifi_provisioning.h"
+#include <string.h>
 
 using namespace vamc;
 
@@ -44,13 +45,13 @@ class FakeCredentialStore : public WifiCredentialStore {
 public:
     bool save_ok = true;
     unsigned save_calls = 0;
-    const char* saved_ssid = nullptr;
-    const char* saved_password = nullptr;
+    char saved_ssid[33] = {};
+    char saved_password[65] = {};
 
     bool save_protected(const char* ssid, const char* password) override {
         ++save_calls;
-        saved_ssid = ssid;
-        saved_password = password;
+        strcpy(saved_ssid, ssid);
+        strcpy(saved_password, password);
         return save_ok;
     }
 };
@@ -130,6 +131,36 @@ void test_TC_CONN_01_reports_protected_save_failure() {
     TEST_ASSERT_TRUE(portal.stopped);
 }
 
+void test_TC_CONN_01_copies_and_clears_pending_credentials() {
+    FakePortal portal; FakeWifi wifi; FakeCredentialStore store;
+    char ssid[] = "owned-network";
+    portal.ssid = ssid;
+    WifiProvisioning setup(portal, wifi, store);
+    setup.start(0); portal.submitted = true; setup.poll(1);
+    ssid[0] = 'X';
+    TEST_ASSERT_EQUAL_STRING("owned-network", wifi.received_ssid);
+    setup.cancel();
+    TEST_ASSERT_EQUAL_STRING("", wifi.received_ssid);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(WifiProvisioningResult::INACTIVE), static_cast<int>(setup.poll(2)));
+    TEST_ASSERT_EQUAL_UINT(0, store.save_calls);
+}
+void test_TC_CONN_01_terminal_timeout_prevents_late_save() {
+    FakePortal portal; FakeWifi wifi; FakeCredentialStore store;
+    WifiProvisioning setup(portal, wifi, store);
+    setup.start(0); portal.submitted = true; setup.poll(1);
+    setup.poll(300000); wifi.is_connected = true;
+    TEST_ASSERT_EQUAL_STRING("", wifi.received_ssid);
+    setup.poll(300001);
+    TEST_ASSERT_EQUAL_UINT(0, store.save_calls);
+}
+void test_TC_CONN_01_rejects_oversized_credentials() {
+    FakePortal portal; FakeWifi wifi; FakeCredentialStore store;
+    WifiProvisioning setup(portal, wifi, store);
+    char long_ssid[34]; memset(long_ssid, 'x', 33); long_ssid[33] = 0;
+    portal.ssid = long_ssid; portal.submitted = true; setup.start(0);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(WifiProvisioningResult::INVALID_CREDENTIALS), static_cast<int>(setup.poll(1)));
+    TEST_ASSERT_EQUAL_UINT(0, wifi.begin_calls);
+}
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_TC_CONN_01_starts_guided_portal);
@@ -138,5 +169,8 @@ int main() {
     RUN_TEST(test_TC_CONN_01_reports_connection_start_failure);
     RUN_TEST(test_TC_CONN_01_times_out_at_five_minutes);
     RUN_TEST(test_TC_CONN_01_reports_protected_save_failure);
+    RUN_TEST(test_TC_CONN_01_copies_and_clears_pending_credentials);
+    RUN_TEST(test_TC_CONN_01_terminal_timeout_prevents_late_save);
+    RUN_TEST(test_TC_CONN_01_rejects_oversized_credentials);
     return UNITY_END();
 }

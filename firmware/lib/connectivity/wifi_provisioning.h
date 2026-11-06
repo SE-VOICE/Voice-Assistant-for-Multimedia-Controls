@@ -25,6 +25,7 @@ public:
     virtual ~WifiConnection() = default;
     virtual bool begin(const char* ssid, const char* password) = 0;
     virtual bool connected() const = 0;
+    virtual void cancel() {}
 };
 
 // Persistence is intentionally an interface only. SR-003's storage protection
@@ -41,7 +42,8 @@ enum class WifiProvisioningResult {
     INVALID_CREDENTIALS,
     CONNECTION_START_FAILED,
     CONNECTION_TIMEOUT,
-    CREDENTIAL_SAVE_FAILED
+    CREDENTIAL_SAVE_FAILED,
+    INACTIVE
 };
 
 class WifiProvisioning {
@@ -52,10 +54,13 @@ public:
                      WifiConnection& connection,
                      WifiCredentialStore& credential_store)
         : portal_(portal), connection_(connection), credential_store_(credential_store),
-          started_at_ms_(0), connecting_(false), pending_ssid_(nullptr), pending_password_(nullptr) {}
+          started_at_ms_(0), connecting_(false), active_(false), pending_ssid_{0}, pending_password_{0} {}
+
+    ~WifiProvisioning() { clear_pending(); }
 
     WifiProvisioningResult start(unsigned long now_ms);
     WifiProvisioningResult poll(unsigned long now_ms);
+    void cancel();
 
 private:
     WifiProvisioningPortal& portal_;
@@ -63,8 +68,10 @@ private:
     WifiCredentialStore& credential_store_;
     unsigned long started_at_ms_;
     bool connecting_;
-    const char* pending_ssid_;
-    const char* pending_password_;
+    bool active_;
+    char pending_ssid_[33];
+    char pending_password_[65];
+    void clear_pending();
 };
 
 } // namespace vamc
