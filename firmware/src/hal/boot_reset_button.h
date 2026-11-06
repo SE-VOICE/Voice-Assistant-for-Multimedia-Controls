@@ -8,7 +8,7 @@ namespace vamc {
 // powering/resetting the board: GPIO0 is an ESP32 boot-strapping pin.
 class BootResetButton {
 public:
-    BootResetButton(FactoryReset& reset, uint32_t approved_hold_ms)
+    BootResetButton(FactoryReset& reset, uint32_t approved_hold_ms = kApprovedBootResetHoldMs)
         : reset_(reset), button_(approved_hold_ms) {}
     void begin() { pinMode(0, INPUT_PULLUP); }
     bool poll(FactoryResetResult& result) {

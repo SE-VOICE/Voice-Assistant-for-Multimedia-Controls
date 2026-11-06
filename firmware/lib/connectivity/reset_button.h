@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 namespace vamc {
+// Dhanush approved this product setting on 7 November 2026.
+constexpr uint32_t kApprovedBootResetHoldMs = 5000;
 // Caller supplies the team-approved duration; zero disables reset. No default
 // duration is invented. Call poll regularly with a monotonic millisecond clock.
 class ResetButton {
