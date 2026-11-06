@@ -1,0 +1,9 @@
+./firmware/test/test_VAMC_F_014/test_main.cpp:124:test_TC_DIAG_01_last_N_events_stored_and_retrieved:PASS
+./firmware/test/test_VAMC_F_014/test_main.cpp:125:test_TC_DIAG_01_circular_overwrite_maintains_last_N_chronologically:PASS
+./firmware/test/test_VAMC_F_014/test_main.cpp:126:test_serial_dump_formatting:PASS
+./firmware/test/test_VAMC_F_014/test_main.cpp:127:test_security_log_structure_contains_no_sensitive_fields:PASS
+./firmware/test/test_VAMC_F_014/test_main.cpp:128:test_buffer_clear:PASS
+
+-----------------------
+5 Tests 0 Failures 0 Ignored 
+OK

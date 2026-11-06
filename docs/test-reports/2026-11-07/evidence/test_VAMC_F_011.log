@@ -1,0 +1,13 @@
+./firmware/test/test_VAMC_F_011/test_main.cpp:166:test_TC_CONN_01_starts_guided_portal:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:167:test_TC_CONN_01_submits_credentials_and_saves_only_after_connection:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:168:test_TC_CONN_01_rejects_empty_network_name:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:169:test_TC_CONN_01_reports_connection_start_failure:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:170:test_TC_CONN_01_times_out_at_five_minutes:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:171:test_TC_CONN_01_reports_protected_save_failure:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:172:test_TC_CONN_01_copies_and_clears_pending_credentials:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:173:test_TC_CONN_01_terminal_timeout_prevents_late_save:PASS
+./firmware/test/test_VAMC_F_011/test_main.cpp:174:test_TC_CONN_01_rejects_oversized_credentials:PASS
+
+-----------------------
+9 Tests 0 Failures 0 Ignored 
+OK

@@ -1,0 +1,10 @@
+./firmware/test/test_INT_01/test_main.cpp:90:test_INT_01_all_seven_results_reach_matching_hid_usage:PASS
+./firmware/test/test_INT_01/test_main.cpp:91:test_INT_01_invalid_ambiguous_low_confidence_send_nothing:PASS
+./firmware/test/test_INT_01/test_main.cpp:92:test_INT_01_recognition_failure_send_nothing:PASS
+./firmware/test/test_INT_01/test_main.cpp:93:test_INT_01_disconnected_host_is_error_not_success:PASS
+./firmware/test/test_INT_01/test_main.cpp:94:test_INT_01_retry_success_is_success_feedback:PASS
+./firmware/test/test_INT_01/test_main.cpp:95:test_INT_01_exhausted_transport_is_error_feedback:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK

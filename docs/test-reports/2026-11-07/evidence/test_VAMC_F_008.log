@@ -1,0 +1,10 @@
+./firmware/test/test_VAMC_F_008/test_main.cpp:125:test_TC_CMD_02_successful_transmission_within_2s:PASS
+./firmware/test/test_VAMC_F_008/test_main.cpp:126:test_TC_CMD_02_all_7_commands_transmit_correct_hid_usages:PASS
+./firmware/test/test_VAMC_F_008/test_main.cpp:127:test_TC_CMD_03_retry_recovers_after_transient_failure:PASS
+./firmware/test/test_VAMC_F_008/test_main.cpp:128:test_TC_CMD_03_all_retries_exhausted_reports_failure:PASS
+./firmware/test/test_VAMC_F_008/test_main.cpp:129:test_disconnected_host_fails_immediately:PASS
+./firmware/test/test_VAMC_F_008/test_main.cpp:130:test_latency_budget_exceeded_fails:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK

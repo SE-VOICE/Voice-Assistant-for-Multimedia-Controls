@@ -1,0 +1,9 @@
+./firmware/test/test_VAMC_F_012/test_main.cpp:103:test_TC_CONN_02_advertises_for_host_discovery:PASS
+./firmware/test/test_VAMC_F_012/test_main.cpp:104:test_TC_CONN_02_pairs_after_discovery_using_displayed_passkey:PASS
+./firmware/test/test_VAMC_F_012/test_main.cpp:105:test_TC_CONN_02_cannot_pair_before_advertising:PASS
+./firmware/test/test_VAMC_F_012/test_main.cpp:106:test_TC_CONN_02_advertising_failure_blocks_pairing:PASS
+./firmware/test/test_VAMC_F_012/test_main.cpp:107:test_TC_CONN_02_just_works_result_is_rejected_and_stopped:PASS
+
+-----------------------
+5 Tests 0 Failures 0 Ignored 
+OK

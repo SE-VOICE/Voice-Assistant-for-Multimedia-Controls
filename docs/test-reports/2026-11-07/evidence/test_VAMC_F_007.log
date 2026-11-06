@@ -1,0 +1,9 @@
+./firmware/test/test_VAMC_F_007/test_main.cpp:81:test_TC_CMD_01_all_7_commands_map_to_valid_hid_usages:PASS
+./firmware/test/test_VAMC_F_007/test_main.cpp:82:test_all_7_commands_are_supported:PASS
+./firmware/test/test_VAMC_F_007/test_main.cpp:83:test_invalid_command_id_rejected:PASS
+./firmware/test/test_VAMC_F_007/test_main.cpp:84:test_command_to_string:PASS
+./firmware/test/test_VAMC_F_007/test_main.cpp:85:test_from_string_parsing:PASS
+
+-----------------------
+5 Tests 0 Failures 0 Ignored 
+OK

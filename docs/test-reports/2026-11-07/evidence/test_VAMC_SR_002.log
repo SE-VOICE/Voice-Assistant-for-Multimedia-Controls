@@ -1,0 +1,9 @@
+./firmware/test/test_VAMC_SR_002/test_main.cpp:105:test_TC_SEC_02_passkey_shown_before_authenticated_pairing:PASS
+./firmware/test/test_VAMC_SR_002/test_main.cpp:106:test_TC_SEC_02_just_works_and_failed_bond_are_rejected:PASS
+./firmware/test/test_VAMC_SR_002/test_main.cpp:107:test_TC_SEC_02_unavailable_page_blocks_pairing:PASS
+./firmware/test/test_VAMC_SR_002/test_main.cpp:108:test_TC_SEC_02_radio_failure_clears_display:PASS
+./firmware/test/test_VAMC_SR_002/test_main.cpp:109:test_TC_SEC_02_unexpected_events_and_invalid_passkey_do_not_pair:PASS
+
+-----------------------
+5 Tests 0 Failures 0 Ignored 
+OK

@@ -1,0 +1,6 @@
+/dev/cu.Bluetooth-Incoming-Port
+/dev/cu.OnePlusBuds3
+/dev/cu.OnePlusBuds33
+/dev/cu.debug-console
+
+No ESP32 serial device observed in this run.

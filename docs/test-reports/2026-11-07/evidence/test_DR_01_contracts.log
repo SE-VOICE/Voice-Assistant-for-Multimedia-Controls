@@ -1,0 +1,7 @@
+./firmware/test/test_DR_01_contracts/test_main.cpp:59:test_DR_01_feedback_can_be_replaced_without_hardware:PASS
+./firmware/test/test_DR_01_contracts/test_main.cpp:60:test_DR_01_log_boundary_preserves_allowed_fields:PASS
+./firmware/test/test_DR_01_contracts/test_main.cpp:61:test_DR_01_ble_contract_compiles_without_platform_headers:PASS
+
+-----------------------
+3 Tests 0 Failures 0 Ignored 
+OK

@@ -1,0 +1,16 @@
+./firmware/test/test_VAMC_F_006/test_main.cpp:165:test_TC_ASR_03_unrecognized_phrase_errors_and_sends_nothing:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:166:test_TC_ASR_03_ambiguous_phrase_errors_and_sends_nothing:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:167:test_null_transcript_is_rejected:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:168:test_matched_command_is_sent_without_error_feedback:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:169:test_all_7_commands_pass_the_gate:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:170:test_low_confidence_is_rejected:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:171:test_threshold_is_configurable:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:172:test_missing_confidence_is_not_checked:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:173:test_invalid_confidence_values_are_rejected:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:174:test_match_outcome_is_checked_before_confidence:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:175:test_asr_failure_errors_and_sends_nothing:PASS
+./firmware/test/test_VAMC_F_006/test_main.cpp:176:test_error_uses_real_feedback_controller_pattern:PASS
+
+-----------------------
+12 Tests 0 Failures 0 Ignored 
+OK

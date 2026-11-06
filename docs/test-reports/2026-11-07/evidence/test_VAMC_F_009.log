@@ -1,0 +1,8 @@
+./firmware/test/test_VAMC_F_009/test_main.cpp:100:test_TC_CMD_03_uses_three_configurable_exponential_retries:PASS
+./firmware/test/test_VAMC_F_009/test_main.cpp:101:test_TC_CMD_03_rechecks_and_recovers_a_temporarily_missing_link:PASS
+./firmware/test/test_VAMC_F_009/test_main.cpp:102:test_TC_CMD_03_reports_disconnected_after_three_retries:PASS
+./firmware/test/test_VAMC_F_009/test_main.cpp:103:test_TC_CMD_03_honors_a_smaller_retry_limit:PASS
+
+-----------------------
+4 Tests 0 Failures 0 Ignored 
+OK
