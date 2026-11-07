@@ -65,7 +65,64 @@ private:
     LogEntry* buffer_;
 };
 
-// Hosting, signature verification and storage policy are pending decisions.
-class OtaUpdater;
+// OTA interfaces keep the portable update policy independent of the selected
+// network host and ESP32 board. The platform backend must fail closed when it
+// cannot install a real signature verifier.
+constexpr size_t kOtaTransferBufferBytes = 512;
+
+struct OtaImageInfo {
+    uint32_t size_bytes;
+    uint32_t version;
+};
+
+enum class OtaFinalizeResult : uint8_t {
+    VERIFIED_AND_ACTIVATED,
+    SIGNATURE_REJECTED,
+    ACTIVATION_FAILED
+};
+
+enum class OtaResult : uint8_t {
+    SUCCESS,
+    SOURCE_UNAVAILABLE,
+    INVALID_IMAGE_SIZE,
+    SIGNATURE_VERIFIER_UNAVAILABLE,
+    UPDATE_BEGIN_FAILED,
+    SOURCE_READ_FAILED,
+    UPDATE_WRITE_FAILED,
+    SIGNATURE_REJECTED,
+    UPDATE_ACTIVATION_FAILED
+};
+
+class IOtaFirmwareSource {
+public:
+    virtual ~IOtaFirmwareSource() = default;
+    // Opens a remote or test source and returns the exact signed image size.
+    virtual bool open(OtaImageInfo& image_info) = 0;
+    // Reads up to capacity bytes; a zero result before size_bytes is exhausted
+    // is a transfer failure, not a successful short image.
+    virtual size_t read(uint8_t* destination, size_t capacity) = 0;
+    virtual bool failed() const = 0;
+    virtual void close() = 0;
+};
+
+class IOtaUpdateBackend {
+public:
+    virtual ~IOtaUpdateBackend() = default;
+    // Must install a genuine signature verifier before begin(). Return false
+    // when signing support or a trusted public key is unavailable.
+    virtual bool enable_signature_verification() = 0;
+    // Stages bytes in an inactive update slot; must not select it for boot.
+    virtual bool begin(uint32_t image_size_bytes) = 0;
+    virtual size_t write(const uint8_t* data, size_t length) = 0;
+    // Verifies the signed image and activates it only after successful verify.
+    virtual OtaFinalizeResult finish_signed_update() = 0;
+    virtual void abort() = 0;
+    virtual void reboot() = 0;
+};
+
+class OtaUpdater {
+public:
+    OtaResult apply(IOtaFirmwareSource& source, IOtaUpdateBackend& backend) const;
+};
 
 } // namespace vamc
