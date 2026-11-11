@@ -27,3 +27,16 @@ details are under [evidence](evidence/). Reproduction runner:
 Prepared under Dhanush's integration/regression responsibilities (INT-02).
 Independent team review and DOC-01 baseline reconciliation remain pending.
 No release freeze, issue closure or RTM Accepted status is authorized by this bundle.
+
+## Submission PDFs
+
+- [Consolidated submission - all four reports](pdf/Team3_Consolidated_Test_Report.pdf)
+- [Unit Test Report PDF](pdf/Unit_Test_Report.pdf)
+- [System Validation Report PDF](pdf/System_Validation_Report.pdf)
+- [Code Coverage Report PDF](pdf/Code_Coverage_Report.pdf)
+- [Branch Coverage Report PDF](pdf/Branch_Coverage_Report.pdf)
+
+The PDFs are presentation copies of the recorded 7 November test evidence, not a
+new test run. The consolidated edition includes a document-control cover and
+submission checklist. Firmware and test sources are unchanged. Full system
+acceptance and independent review remain pending.
