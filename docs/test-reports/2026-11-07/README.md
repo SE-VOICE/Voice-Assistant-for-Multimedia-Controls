@@ -1,3 +1,5 @@
+> **Latest update:** [11 November demo evidence and completion-status addendum](UPDATE_2026-11-11.md). Read this with the historical reports below.
+
 # Team 3 testing reports — 7 November 2026
 
 Application source: `91d5a74d815a2daff04afd896e4f135877d552b9`. Actual execution: **07 November 2026, 01:50 IST (UTC+05:30)**, not backdated to
