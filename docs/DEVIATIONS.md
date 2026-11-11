@@ -31,3 +31,10 @@
   until selection, so an ESP32 build and hardware testing remain blocked.
 - Other open decisions (pairing, credential protection, retry count, HID mapping,
   cloud, wake engine, OTA) remain unresolved; placeholders implement none of them.
+
+
+## Documentation baseline replacement on 11 November 2026
+
+At Dhanush S S's explicit request, replace the published SRS, SAD and STP with guide-aligned version 1.3. Sources are the supplied complete project guide and updated SRS. Recognition moves to local Windows Faster-Whisper; ESP32 captures I2S audio over serial, and the guide specifies PyAutoGUI media dispatch. Wake word, on-board inference, BLE HID and associated maintenance/security requirements are deferred in this proposed baseline. The vocabulary uses Mute instead of Resume, and Stop maps to PAUSE. Existing IDs, changed meanings and approval consequences are detailed in the documents.
+
+Approval: project lead explicitly requested replacement; instructor approval remains pending. Impact: historical requirements/test results retain their original meaning and dates; no new acceptance results are created. Existing companion implementation differs in protocol, command vocabulary and dispatch from the guide and needs reconciliation. Firmware and companion code are preserved.

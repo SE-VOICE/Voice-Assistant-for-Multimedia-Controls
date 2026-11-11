@@ -1,108 +1,44 @@
 # Voice Assistant for Multimedia Controls
 
-A hardware-based, voice-controlled multimedia remote built on **ESP32**. Say a wake word, speak a command, and control playback on a paired host device (phone, PC, TV, or Bluetooth speaker) — no touching a screen or remote required.
+Team 3's revised prototype uses an INMP441 microphone and ESP32 for audio acquisition, USB serial for transfer, and a Windows laptop for local speech recognition and media-key execution.
 
-**Team 3**
+## Current documentation baseline
 
-Experimental contribution by [@dheekshithgs](https://github.com/dheekshithgs):
-[USB/laptop voice-assistant prototype](companion/laptop_prototype/README.md).
-This optional prototype is separate from the target ESP32 recognition/BLE path;
-see its documented test results and limitations before running it.
+Version 1.3, dated 11 November 2026, follows the supplied project guide. The team lead requested publication; instructor review of the scope changes remains pending.
 
-| SRN | Name | Role |
-|---|---|---|
-| PES2UG24CS154 | Dhanush S S | Project Manager & Integration Lead |
-| PES2UG24CS166 | G S Dheekshith | Audio Module Lead |
-| PES2UG24CS183 | Harsh Mannan | Recognition Module Lead |
-| PES2UG24CS137 | Chiranthan Shankar ([@ChiruDevv](https://github.com/ChiruDevv)) | Output & Maintenance Module Lead |
+| Document | PDF | Editable Word | Markdown |
+|---|---|---|---|
+| Software Requirements Specification | [SRS](SRS_Voice_Assistant_Updated.pdf) | [Word](docs/SRS_Voice_Assistant_Updated.docx) | [Source](docs/SRS_Voice_Assistant_Updated.md) |
+| Software Architecture Document | [SAD](3_SE_SAD.pdf) | [Word](docs/SAD_Voice_Assistant_Updated.docx) | [Source](docs/SAD_Voice_Assistant_Updated.md) |
+| Software Test Plan | [STP](3_SE_STP.pdf) | [Word](docs/STP_Voice_Assistant_Updated.docx) | [Source](docs/STP_Voice_Assistant_Updated.md) |
 
----
+These replace the older published specifications at the existing PDF paths. Previous versions remain in Git history. See the documents' change registers and [deviations](docs/DEVIATIONS.md).
 
-## Overview
+## Guide architecture
 
-The assistant listens continuously for a wake word on-device, then streams the captured command to a cloud speech-to-text service for recognition. Recognized commands are translated into Bluetooth Low Energy (BLE) HID media-key events and sent to a paired host, which executes the action.
+INMP441 -> I2S -> ESP32 -> USB serial -> WAV -> local Faster-Whisper -> keyword classification -> action mapping -> PyAutoGUI -> Windows media keys.
 
-**Supported commands:** volume up, volume down, pause, resume, play, next, previous.
+The guide specifies one five-second recording per invocation, 16 kHz mono PCM16, 921600-baud serial and AUD0/length/payload/END0 framing. Recognition runs on the laptop. A cached model permits local inference; installation and initial model preparation may need internet. Cloud speech recognition is not part of this design.
 
-```
- Wake Word ──▶ Capture Audio ──▶ Cloud ASR ──▶ Command Mapping ──▶ BLE HID ──▶ Host Media Player
- (on-device)                    (speech-to-text)                 (transmit)   (executes action)
-```
+Guide keywords: **play, stop, next, previous, mute, increase, decrease**. Stop maps to PAUSE; play and stop both use the playpause toggle, so a requested playback state is not guaranteed. Mute affects host audio, not the microphone. Wake word, on-board recognition and BLE HID are deferred in this revised baseline.
 
-## Features
+## Team and work division
 
-- 🎙️ On-device wake-word detection (no audio leaves the device until triggered)
-- ☁️ Cloud-based speech recognition for accurate command transcription
-- 🔊 7 core multimedia commands via Bluetooth HID
-- 🔗 Guided Wi-Fi provisioning (captive portal) and Bluetooth pairing
-- 💡 LED/buzzer feedback for listening, success, and error states
-- 🔁 Retry/backoff logic for unreliable BLE links
-- 🛠️ OTA firmware updates with signature verification
-- 🧪 Optional Python + MediaPipe companion module for PC-side testing/gesture confirmation
+| Member | SRN | Assigned part | Independent cross-tester |
+|---|---|---|---|
+| Dhanush S S | PES2UG24CS154 | Integration, main.py, CLI setup and publication | G S Dheekshith |
+| G S Dheekshith ([@dheekshithgs](https://github.com/dheekshithgs)) | PES2UG24CS166 | INMP441/I2S, firmware, serial reception and WAV creation | Harsh Mannan |
+| Harsh Mannan ([@Harshaltt](https://github.com/Harshaltt)) | PES2UG24CS183 | Local recognition, classifier, accuracy and document reconciliation | Chiranthan Shankar |
+| Chiranthan Shankar ([@ChiruDevv](https://github.com/ChiruDevv)) | PES2UG24CS137 | Mapping, media execution and diagnostics | Dhanush S S |
 
-## Hardware & Tech Stack
+Assignments describe responsibility, not retrospective authorship. All four participate in system validation.
 
-| Category | Details |
-|---|---|
-| Microcontroller | ESP32 (e.g., ESP32-WROOM) |
-| Microphone | I2S / analog MEMS mic |
-| Connectivity | 2.4GHz Wi-Fi, Bluetooth 4.2+ / BLE |
-| Firmware language | C / C++ (Arduino / ESP-IDF) |
-| Speech recognition | Cloud ASR API (e.g., Google Cloud Speech-to-Text) over HTTPS |
-| Companion tooling | Python, MediaPipe |
-| Power | USB or Li-ion battery (e.g., 2000mAh) |
+## Implementation and evidence
 
-## Repository Structure
+[Existing laptop prototype](companion/laptop_prototype/README.md) preserves Dheekshith's contribution and subsequent review fixes. Its actual protocol, command vocabulary and dispatch adapter differ from the guide; follow its own README to run that code. The new specifications do not certify that the existing implementation already conforms to every revised contract. Firmware and companion source are unchanged by this documentation replacement.
 
-```
-.
-├── firmware/           # ESP32 firmware (wake-word, ASR client, BLE HID, OTA)
-├── companion/          # Optional Python + MediaPipe testing/companion module
-├── SRS_Voice_Assistant_Updated.pdf  # Software requirements specification
-├── docs/
-│   └── images/          # UML use-case diagrams
-└── README.md
-```
+- [Published prototype video and observations](docs/demos/review-1/README.md)
+- [Test reports and measured evidence](docs/test-reports/2026-11-07/README.md)
+- [Latest testing addendum](docs/test-reports/2026-11-07/UPDATE_2026-11-11.md)
 
-> Adjust this tree to match your actual folder layout as the codebase grows.
-
-## Getting Started
-
-### Prerequisites
-
-- [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) or the [Arduino IDE](https://www.arduino.cc/en/software) with ESP32 board support
-- An ESP32 dev board + I2S/analog MEMS microphone
-- A cloud ASR account/API key (e.g., Google Cloud Speech-to-Text)
-- Python 3.9+ (only if using the companion module)
-
-### Setup
-
-1. Clone the repo:
-   ```bash
-   git clone <repo-url>
-   cd <repo-name>
-   ```
-2. Flash the firmware in `firmware/` to your ESP32 (see in-folder instructions).
-3. On first boot, connect to the device's Wi-Fi captive portal to provision your home Wi-Fi.
-4. Pair the device with your host over Bluetooth (phone/PC/TV that supports BLE HID media keys).
-5. Say the wake word, then speak a command (e.g., "next", "pause").
-
-### Optional: companion module
-
-```bash
-cd companion
-pip install -r requirements.txt
-python main.py
-```
-
-## Documentation
-
-The current proposed requirements baseline is in the [updated SRS](SRS_Voice_Assistant_Updated.pdf). Its scope changes are pending instructor approval.
-
-## Testing & Cross-Testing
-
-Each module is developed by one team member and cross-tested by another (no one tests their own code) — see Section 9 of the SRS for the full rotation and status-code conventions (`N` / `P` / `T` / `A` / `F` / `B`).
-
-## License
-
-_Add a license (e.g., MIT) before making this repository public, if applicable._
+Historical test results apply to their recorded source baselines and exclusions. The STP defines revised tests and all 25 requirement dispositions; planned cases and deferred scope are not passed results.
