@@ -58,9 +58,8 @@ The assistant listens continuously for a wake word on-device, then streams the c
 .
 ├── firmware/           # ESP32 firmware (wake-word, ASR client, BLE HID, OTA)
 ├── companion/          # Optional Python + MediaPipe testing/companion module
+├── SRS_Voice_Assistant_Updated.pdf  # Software requirements specification
 ├── docs/
-│   ├── SRS_Voice_Assistant_Multimedia_Controls.docx
-│   ├── SRS_Voice_Assistant_Multimedia_Controls.md
 │   └── images/          # UML use-case diagrams
 └── README.md
 ```
@@ -98,14 +97,7 @@ python main.py
 
 ## Documentation
 
-Full requirements, architecture, and UML diagrams live in [`docs/SRS_Voice_Assistant_Multimedia_Controls.md`](docs/SRS_Voice_Assistant_Multimedia_Controls.md), including:
-
-- Functional & non-functional requirements (`VAMC-F-###` / `VAMC-NF-###`)
-- Security requirements (`VAMC-SR-###`)
-- UML use-case diagrams with interpretation notes
-- Requirements Traceability Matrix (RTM)
-- Team work division & cross-testing plan
-- Assumptions, out-of-scope items, and a final consistency checklist
+The current proposed requirements baseline is in the [updated SRS](SRS_Voice_Assistant_Updated.pdf). Its scope changes are pending instructor approval.
 
 ## Testing & Cross-Testing
 
